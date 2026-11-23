@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Local data: API cache and database are rebuilt by `uv run python -m ingest.run`
+data/cache/
+data/*.duckdb
+data/*.duckdb.wal
+data/*.log
