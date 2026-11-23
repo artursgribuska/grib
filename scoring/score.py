@@ -1,0 +1,84 @@
+"""Combine signal outputs into a 0–100 alert score with per-signal contributions.
+
+Transparent weighted rule (no ML until a backtest exists):
+
+    score = Σ  100 × weight_k × signal_k          (each signal is 0..1, weights sum to 1)
+            − hedge adjustment                     (up to −20 if the account also bought the loser)
+
+Every point of the score is stored against the signal that produced it, so the
+dashboard and case file can say exactly why an alert scored what it did.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from signals import ALL_SIGNALS
+from signals.base import PositionContext, SignalResult, money
+
+WEIGHTS = {
+    "pre_resolution_timing": 0.25,
+    "low_probability_conviction": 0.25,
+    "fresh_single_purpose_wallet": 0.20,
+    "size_anomaly": 0.15,
+    "category_prior": 0.15,
+}
+HEDGE_MAX_PENALTY = 20.0
+ALERT_THRESHOLD = 50.0     # "warrants review" line used by the case-file step
+
+LABELS = {
+    "pre_resolution_timing": "Pre-resolution timing",
+    "low_probability_conviction": "Low-probability conviction",
+    "fresh_single_purpose_wallet": "Fresh / single-purpose wallet",
+    "size_anomaly": "Size anomaly",
+    "category_prior": "Category prior",
+    "hedge_adjustment": "Hedge adjustment",
+}
+
+
+@dataclass
+class ScoredPosition:
+    ctx: PositionContext
+    signals: list[SignalResult]
+    contributions: dict[str, float]
+    score: float
+    explanation: str
+    hedge_ratio: float = 0.0
+    extra: dict = field(default_factory=dict)
+
+
+def short_account(account_id: str) -> str:
+    """Public-facing display form of a pseudonymous wallet: never show it in full."""
+    return f"{account_id[:6]}…{account_id[-4:]}" if len(account_id) > 12 else account_id
+
+
+def score_position(ctx: PositionContext) -> ScoredPosition:
+    results = [fn(ctx) for fn in ALL_SIGNALS]
+    contrib = {r.name: round(100 * WEIGHTS[r.name] * r.score, 2) for r in results}
+    hedge_ratio = min(1.0, ctx.hedge_notional / ctx.buy_notional) if ctx.buy_notional else 0.0
+    contrib["hedge_adjustment"] = round(-HEDGE_MAX_PENALTY * hedge_ratio, 2)
+    total = max(0.0, round(sum(contrib.values()), 1))
+    return ScoredPosition(ctx, results, contrib, total, explain(ctx, results, contrib, total), hedge_ratio)
+
+
+def explain(ctx: PositionContext, results: list[SignalResult], contrib: dict, total: float) -> str:
+    """One sentence a compliance officer can read aloud."""
+    ev = {r.name: r.evidence for r in results}
+    t, lp, fw = ev["pre_resolution_timing"], ev["low_probability_conviction"], ev["fresh_single_purpose_wallet"]
+    bits = [f"{money(ctx.buy_notional)} on '{ctx.outcome}' at avg {ctx.vwap:.2f}"]
+    if t.get("share_within_72h", 0) >= 0.5:
+        bits.append(f"{t['share_within_72h']:.0%} of it in the 72 h before the outcome became public")
+    else:
+        bits.append(f"built ~{_h(t.get('weighted_avg_lead_hours', 0))} before the outcome became public")
+    age = fw.get("account_age_days_at_first_buy")
+    if age is not None and age <= 14 and fw.get("first_seen_source") == "venue_join_date":
+        bits.append(f"from a wallet {age:.0f} days old")
+    elif fw.get("markets_traded", 99) <= 3:
+        bits.append(f"from a wallet that has traded only {fw['markets_traded']} market(s)")
+    top = max((k for k in contrib if k != "hedge_adjustment"), key=lambda k: contrib[k])
+    return (f"Score {total:.0f}: " + ", ".join(bits) +
+            f" — largest driver: {LABELS[top].lower()} (+{contrib[top]:.0f}); paid out {money(lp['position_payout'])}.")
+
+
+def _h(hours: float) -> str:
+    return f"{hours:.0f} h" if hours < 72 else f"{hours / 24:.0f} days"

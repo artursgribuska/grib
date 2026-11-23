@@ -1,0 +1,89 @@
+"""Shared types for detection signals.
+
+Every signal is a pure function: PositionContext -> SignalResult. No database, no
+network, no venue-specific fields — so each is easy to unit-test and to explain.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+
+
+@dataclass(frozen=True)
+class Buy:
+    ts: datetime
+    price: float     # implied probability paid (0..1)
+    size: float      # shares / units
+    notional: float  # price * size
+
+
+@dataclass
+class PositionContext:
+    """Everything the signals may know about one account's position in one market."""
+    market_id: str
+    account_id: str
+    outcome: str                      # the outcome bought (the eventual winner)
+    question: str
+    category: str
+    certainty_at: datetime            # when the outcome became publicly (near-)certain
+    resolved_at: datetime
+    market_volume: float              # matched volume of the market (currency units)
+    buys: list[Buy]                   # pre-certainty buys of `outcome`
+    # account facts
+    account_first_seen_at: datetime | None = None
+    account_first_seen_source: str = "unknown"   # 'venue_join_date' | 'dataset_first_trade'
+    lifetime_markets: int | None = None          # from the venue, if known
+    dataset_markets: int = 1                     # markets this account traded in our data
+    dataset_buy_notional: float = 0.0            # account's total buys in our data
+    other_position_notionals: list[float] = field(default_factory=list)  # account's positions elsewhere
+    # market size distribution (log10 of position notionals)
+    market_log_median: float | None = None
+    market_log_mad: float | None = None
+    market_percentile: float | None = None       # 0..1 rank of this position in its market
+    market_n_positions: int = 0
+    hedge_notional: float = 0.0                  # same account's buys of the losing outcome
+
+    @property
+    def buy_notional(self) -> float:
+        return sum(b.notional for b in self.buys)
+
+    @property
+    def buy_size(self) -> float:
+        return sum(b.size for b in self.buys)
+
+    @property
+    def vwap(self) -> float:
+        s = self.buy_size
+        return self.buy_notional / s if s else 0.0
+
+    @property
+    def first_buy_ts(self) -> datetime:
+        return min(b.ts for b in self.buys)
+
+
+@dataclass
+class SignalResult:
+    name: str
+    score: float          # 0..1
+    reason: str           # one human-readable sentence
+    evidence: dict        # the numbers behind the reason (all appear in the case file bundle)
+
+    def __post_init__(self):
+        self.score = float(max(0.0, min(1.0, self.score)))
+
+
+def clip01(x: float) -> float:
+    return max(0.0, min(1.0, x))
+
+
+def money(x: float) -> str:
+    return f"${x:,.0f}"
+
+
+def hours_str(h: float) -> str:
+    if h < 1:
+        return f"{h * 60:.0f} min"
+    if h < 48:
+        return f"{h:.1f} h"
+    return f"{h / 24:.1f} days"
