@@ -109,7 +109,7 @@ def prepare_markets(df: pd.DataFrame, venue: str, rep: LoadReport) -> pd.DataFra
         "market_id": df.market_id, "venue": venue, "question": df.question.astype(str),
         "category": df.category, "opened_at": df.opened_at, "closes_at": df.resolved_at,
         "resolved_at": df.resolved_at, "winning_outcome": df.winning_outcome.astype(str).str.strip(),
-        "metadata_json": [json.dumps({"source": "operator_csv"})] * len(df)})
+        "metadata_json": [json.dumps({"source": "operator_csv", "trade_rows_per_fill": 1})] * len(df)})
 
 
 def prepare_trades(df: pd.DataFrame, markets: pd.DataFrame, venue: str, rep: LoadReport) -> pd.DataFrame:
@@ -129,7 +129,10 @@ def prepare_trades(df: pd.DataFrame, markets: pd.DataFrame, venue: str, rep: Loa
         df["price"], df["size"], df["notional"] = 1 / odds, stake * odds, stake
     else:
         raise ValueError("trades: need either price + size, or decimal_odds + stake")
-    df["side"] = df.side.astype(str).str.strip().str.lower() if "side" in df else "buy"
+    if "side" in df:   # blank cells mean the default, 'buy'
+        df["side"] = df.side.fillna("").astype(str).str.strip().str.lower().replace("", "buy")
+    else:
+        df["side"] = "buy"
 
     checks = [
         ("unparseable timestamp", df.ts.isna()),

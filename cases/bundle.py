@@ -299,12 +299,12 @@ def price_path(con, venue, mid, first_buy: datetime, resolved: datetime) -> list
     """Implied price of the winning outcome, sampled into buckets (last trade per bucket),
     from shortly before the account's first buy to resolution."""
     span = max((resolved - first_buy).total_seconds(), 3600)
-    start_epoch = first_buy.timestamp() - 0.25 * span
+    start_epoch = first_buy.replace(tzinfo=timezone.utc).timestamp() - 0.25 * span   # naive = UTC
     bucket = max(60, int(span * 1.25 / MAX_PRICE_POINTS))
     rows = con.execute(f"""
         SELECT to_timestamp(floor(epoch(ts) / {bucket}) * {bucket})::TIMESTAMP AS t,
                arg_max(winner_price, ts) AS price
-        FROM trades_w WHERE venue = ? AND market_id = ? AND notional >= 5
+        FROM trades_w WHERE venue = ? AND market_id = ? AND notional >= 5 AND winner_price IS NOT NULL
           AND epoch(ts) >= ? AND ts <= ?
         GROUP BY 1 ORDER BY 1""", [venue, mid, start_epoch, resolved]).fetchall()
     return [{"time": _ts(t), "winner_price": _num(px, 3)} for t, px in rows]

@@ -109,7 +109,7 @@ def save(con: duckdb.DuckDBPyConnection, scored: list[ScoredPosition]) -> None:
     rows, sig_rows = [], []
     for sp in scored:
         c = sp.ctx
-        pid = f"{c.market_id[:10]}:{c.account_id}"
+        pid = f"{c.market_id}:{c.account_id}"   # full id: operator market ids can share prefixes
         rows.append({
             "position_id": pid, "market_id": c.market_id, "account_id": c.account_id,
             "outcome": c.outcome, "category": c.category, "question": c.question,

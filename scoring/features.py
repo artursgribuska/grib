@@ -59,17 +59,25 @@ FUNDING_MIN_USD = 50         # smaller transfers are dust / address-poisoning sp
 
 def build_features(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"""
+    -- winner_price: the winner's implied price at each trade. In a two-outcome market a trade on
+    -- the loser at p implies 1 − p for the winner; with three or more outcomes it implies nothing
+    -- about the winner, so it is NULL (only trades on the winner carry its price).
+    -- fill_rows: Polymarket stores both wallets' sides of each fill (2 rows per fill); an operator's
+    -- bet export stores only the customer side (1 row) — volume divides by this.
     CREATE OR REPLACE TABLE trades_w AS
+    WITH n_out AS (SELECT venue, market_id, count(DISTINCT outcome) AS n_outcomes FROM trades GROUP BY 1, 2)
     SELECT t.*, m.winning_outcome,
-           CASE WHEN t.outcome = m.winning_outcome THEN t.price ELSE 1 - t.price END AS winner_price
-    FROM trades t JOIN markets m USING (venue, market_id)
+           CASE WHEN t.outcome = m.winning_outcome THEN t.price
+                WHEN o.n_outcomes <= 2 THEN 1 - t.price END AS winner_price,
+           coalesce(TRY_CAST(json_extract(m.metadata_json, '$.trade_rows_per_fill') AS DOUBLE), 2) AS fill_rows
+    FROM trades t JOIN markets m USING (venue, market_id) JOIN n_out o USING (venue, market_id)
     WHERE m.winning_outcome IS NOT NULL AND t.ts <= m.resolved_at;
 
     CREATE OR REPLACE TABLE market_state AS
     WITH last_unc AS (
         SELECT venue, market_id,
                max(ts) FILTER (WHERE winner_price < {CERTAINTY_PRICE} AND notional >= {CERTAINTY_MIN_NOTIONAL}) AS last_uncertain_ts,
-               sum(notional) / 2 AS market_volume,
+               sum(notional / fill_rows) AS market_volume,
                count(DISTINCT account_id) AS n_accounts,
                min(ts) AS first_trade_ts
         FROM trades_w GROUP BY 1, 2)
@@ -86,7 +94,7 @@ def build_features(con: duckdb.DuckDBPyConnection) -> None:
     -- volume traded before the outcome became public: what a bettor was betting against
     -- (post-news frenzies can be many times larger and would make any earlier bet look small)
     CREATE OR REPLACE TABLE market_state AS
-    SELECT s.*, coalesce((SELECT sum(w.notional) / 2 FROM trades_w w
+    SELECT s.*, coalesce((SELECT sum(w.notional / w.fill_rows) FROM trades_w w
                           WHERE w.venue = s.venue AND w.market_id = s.market_id AND w.ts < s.certainty_at), 0)
                 AS market_volume_pre
     FROM market_state s;
@@ -187,7 +195,7 @@ def build_market_moves(con: duckdb.DuckDBPyConnection) -> None:
     px = con.execute("""
         SELECT w.market_id, time_bucket(INTERVAL 1 HOUR, w.ts) AS h, arg_max(w.winner_price, w.ts) AS p
         FROM trades_w w JOIN market_state s USING (venue, market_id)
-        WHERE w.notional >= 5 AND w.ts < s.certainty_at
+        WHERE w.notional >= 5 AND w.ts < s.certainty_at AND w.winner_price IS NOT NULL
         GROUP BY 1, 2 ORDER BY 1, 2""").df()
     moves = []
     for mid, g in px.groupby("market_id"):
@@ -318,13 +326,16 @@ def candidate_buys(con: duckdb.DuckDBPyConnection):
         WITH b AS (
             SELECT w.venue, w.market_id, w.account_id, w.ts, w.price, w.size, w.notional,
                    least(w.ts + INTERVAL {LEAD_HORIZON_H} HOUR,
-                         s.certainty_at - INTERVAL {LEAD_MARGIN_MIN} MINUTE) AS later_ts
+                         s.certainty_at - INTERVAL {LEAD_MARGIN_MIN} MINUTE) AS later_ts   -- may precede ts: see below
             FROM trades_w w
             JOIN candidate_positions c USING (venue, market_id, account_id, outcome)
             JOIN market_state s USING (venue, market_id)
             WHERE w.side = 'buy' AND w.ts < s.certainty_at),
-        px AS (SELECT venue, market_id, ts, winner_price FROM trades_w WHERE notional >= 5)
-        SELECT b.*, l.winner_price AS later_price, p.winner_price AS before_price
+        px AS (SELECT venue, market_id, ts, winner_price FROM trades_w
+               WHERE notional >= 5 AND winner_price IS NOT NULL)
+        -- a buy in the last LEAD_MARGIN_MIN before certainty has no "later" price before public
+        SELECT b.* EXCLUDE (later_ts),
+               CASE WHEN b.later_ts > b.ts THEN l.winner_price END AS later_price, p.winner_price AS before_price
         FROM b
         ASOF LEFT JOIN px l ON l.venue = b.venue AND l.market_id = b.market_id AND l.ts <= b.later_ts
         ASOF LEFT JOIN px p ON p.venue = b.venue AND p.market_id = b.market_id AND p.ts < b.ts

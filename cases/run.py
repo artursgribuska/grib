@@ -106,7 +106,8 @@ def main(argv=None) -> int:
             continue
         stem = file_stem(rank, pid)
         (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(bundle, indent=1, ensure_ascii=False))
-        if client is None:
+        if client is None:   # a case file written from older evidence must not sit next to the new bundle
+            (OUT_DIR / f"{stem}.md").unlink(missing_ok=True)
             print(f"{rank:>2}. bundle  {stem}  {bundle['market']['question'][:60]}")
             continue
         res = write_case(bundle, client)

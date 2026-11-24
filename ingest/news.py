@@ -42,6 +42,7 @@ GDELT = "https://api.gdeltproject.org/api/v2/doc/doc"
 MODEL = "claude-opus-5-5"
 EFFORT = "low"
 LOOKBACK_H = 72
+ARCHIVE_DAYS = 88          # GDELT DOC 2.0 searches a rolling ~3-month window; older windows cannot be searched
 AFTER_PUBLIC_H = 6
 MAX_ARTICLES = 250
 MIN_ALERT_SCORE = 40.0
@@ -148,9 +149,12 @@ CREATE TABLE IF NOT EXISTS news_articles (
 def process_market(client, http, m) -> tuple[dict, list[dict]]:
     start = m.first_flagged_buy.to_pydatetime() - timedelta(hours=LOOKBACK_H)
     end = m.certainty_at.to_pydatetime() + timedelta(hours=AFTER_PUBLIC_H)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     row = {"market_id": m.market_id, "query": None, "reveal": None, "window_from": start, "window_to": end,
-           "n_articles": 0, "n_relevant": 0, "earliest_relevant_at": None, "status": "ok",
-           "fetched_at": datetime.now(timezone.utc).replace(tzinfo=None)}
+           "n_articles": 0, "n_relevant": 0, "earliest_relevant_at": None, "status": "ok", "fetched_at": now}
+    if start < now - timedelta(days=ARCHIVE_DAYS):   # an empty answer would read as "no news" — it is not
+        row["status"] = "outside news archive window"
+        return row, []
     try:
         q = _ask(client, QUERY_PROMPT, f"Question: {m.question}\nWinning outcome: {m.winner}\nCategory: {m.category}",
                  QUERY_SCHEMA)
@@ -192,7 +196,13 @@ def run(con, client=None, http: CachedClient | None = None, refresh: bool = Fals
     todo = [m for m in tg.itertuples() if m.market_id not in done]
     if not todo:
         return {"markets": len(tg), "processed": 0}
-    client = client or _client()
+    if client is None:
+        from cases.writer import MissingApiKey
+        try:
+            client = _client()
+        except MissingApiKey as e:     # same as the case writer: skip, never stop the pipeline
+            log.warning("news search skipped: %s", e)
+            return {"markets": len(tg), "processed": 0, "skipped": "no API key"}
     http = http or CachedClient()
     for i, m in enumerate(todo, 1):
         row, arts = process_market(client, http, m)

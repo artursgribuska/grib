@@ -103,3 +103,10 @@ def test_rendered_case_file_has_required_sections_and_no_full_wallet():
                     "## Risk rating", "## Recommended next steps", "## Data limitations"]:
         assert heading in md
     assert "0x" + "ab" * 20 not in md
+
+
+def test_number_check_catches_invented_figures_with_unit_suffixes():
+    bundle = {"position": {"cost_usd": 43339, "hours": 6.2, "multiple": 4.0}}
+    assert check_numbers("bought $43k, about 6.2h before, 4x the typical", bundle) == []
+    bad = check_numbers("bought $50k within 9h, 7x the typical, $1.2M paid", bundle)
+    assert set(bad) == {"$50k", "9h", "7x", "$1.2M"}
