@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 import duckdb
 
 import config
-from cases.bundle import build_bundle
+from cases.bundle import build_bundle, case_id
 from cases.writer import MissingApiKey, make_client, render_markdown, write_case
 
 OUT_DIR = config.DATA_DIR / "cases"
@@ -31,7 +31,7 @@ DDL = """CREATE TABLE IF NOT EXISTS case_files (
 
 
 def file_stem(rank: int, position_id: str) -> str:
-    return f"{rank:02d}_{position_id.split(':')[0][2:10]}_{position_id[-4:]}"
+    return f"{rank:02d}_{case_id(position_id)}"
 
 
 def main(argv=None) -> int:

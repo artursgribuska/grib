@@ -5,7 +5,7 @@ from cases.numbers import bundle_numbers, check_language, check_numbers, extract
 from cases.writer import CASE_SCHEMA, render_markdown, write_case
 
 BUNDLE = {
-    "case_id": "0xabcdef12:0x" + "ab" * 20,
+    "case_id": "CASE-0123456789",
     "disclaimer": "Demo.",
     "market": {"question": "Will X be named CEO?", "category": "personnel", "winning_outcome": "Yes",
                "outcome_became_public_at": "2026-11-23 13:59 UTC", "market_volume_usd": 46711.0},
@@ -88,6 +88,12 @@ def test_writer_flags_case_that_still_fails():
     assert not res.checks_passed and res.unmatched_numbers == ["$99,999"]
     md = render_markdown(BUNDLE, res)
     assert "NEEDS ATTENTION" in md and "untraced: $99,999" in md
+
+
+def test_case_id_hides_wallet():
+    from cases.bundle import case_id
+    cid = case_id("0xabcdef1234:0x" + "ab" * 20)
+    assert cid.startswith("CASE-") and "abab" not in cid.lower() and len(cid) == 15
 
 
 def test_rendered_case_file_has_required_sections_and_no_full_wallet():

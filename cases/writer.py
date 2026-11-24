@@ -159,7 +159,7 @@ def render_markdown(bundle: dict, result: CaseResult) -> str:
         f"> {bundle['disclaimer']}",
         "",
         "| | |", "|---|---|",
-        f"| Case ID | `{bundle['case_id'][:11]}…{a['display_id']}` |",
+        f"| Case ID | `{bundle['case_id']}` |",
         f"| Account | `{a['display_id']}` (pseudonymous) |",
         f"| Market | {m['question']} ({m['category'].replace('_', ' ')}) |",
         f"| Outcome bought / winner | {p['outcome_bought']} / {m['winning_outcome']} |",

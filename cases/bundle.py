@@ -9,6 +9,7 @@ Reads only canonical tables + the derived feature/score tables, so it works for 
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 from datetime import datetime, timezone
 
@@ -55,6 +56,11 @@ def _ts(x) -> str | None:
     return x.strftime("%Y-%m-%d %H:%M UTC")
 
 
+def case_id(position_id: str) -> str:
+    """Public-safe case reference: a short hash, so no wallet address leaks into files."""
+    return "CASE-" + hashlib.sha1(position_id.encode()).hexdigest()[:10].upper()
+
+
 def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
     p = con.execute("SELECT * FROM position_scores WHERE position_id = ?", [position_id]).df()
     if p.empty:
@@ -79,7 +85,7 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
     lp_ev = json.loads(sigs.loc[sigs.signal == low_probability.NAME, "evidence_json"].iloc[0])
 
     bundle = {
-        "case_id": position_id,
+        "case_id": case_id(position_id),
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "venue": venue,
         "disclaimer": DISCLAIMER,
