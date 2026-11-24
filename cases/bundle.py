@@ -144,6 +144,7 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
             "officially_resolved_at": _ts(resolved),
             "hours_between_public_and_resolution": _num((resolved - certainty).total_seconds() / 3600, 1),
             "market_volume_usd": _num(m.market_volume, 0),
+            "market_volume_before_public_usd": _num(m.market_volume_pre, 0),
             "accounts_trading": int(m.n_accounts),
             "positions_before_public": int(m.n_positions or 0),
         },

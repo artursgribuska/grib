@@ -30,7 +30,7 @@ class PositionContext:
     category: str
     certainty_at: datetime            # when the outcome became publicly (near-)certain
     resolved_at: datetime
-    market_volume: float              # matched volume of the market (currency units)
+    market_volume: float              # matched volume BEFORE public certainty (currency units)
     buys: list[Buy]                   # pre-certainty buys of `outcome`
     # account facts
     account_first_seen_at: datetime | None = None

@@ -28,7 +28,7 @@ from signals.base import Buy, PositionContext
 
 def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
     pos = con.execute("""
-        SELECT c.*, s.question, s.category, s.certainty_at, s.resolved_at, s.market_volume,
+        SELECT c.*, s.question, s.category, s.certainty_at, s.resolved_at, s.market_volume_pre AS market_volume,
                d.med_log, d.mad_log, d.n_positions,
                a.first_seen_at, a.metadata_json,
                h.dataset_markets, h.dataset_buy_notional, h.per_market,

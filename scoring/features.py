@@ -83,6 +83,14 @@ def build_features(con: duckdb.DuckDBPyConnection) -> None:
            END AS certainty_at
     FROM markets m JOIN last_unc l USING (venue, market_id);
 
+    -- volume traded before the outcome became public: what a bettor was betting against
+    -- (post-news frenzies can be many times larger and would make any earlier bet look small)
+    CREATE OR REPLACE TABLE market_state AS
+    SELECT s.*, coalesce((SELECT sum(w.notional) / 2 FROM trades_w w
+                          WHERE w.venue = s.venue AND w.market_id = s.market_id AND w.ts < s.certainty_at), 0)
+                AS market_volume_pre
+    FROM market_state s;
+
     -- every account's pre-certainty buys per (market, outcome): used for size distributions
     CREATE OR REPLACE TABLE positions_all AS
     SELECT w.venue, w.market_id, w.account_id, w.outcome,

@@ -4,9 +4,10 @@ Question: did the account put meaningful money on the winner while the market th
 it was unlikely (price < 0.30)?
 
 "Surprise" of a buy = log(1/price) — a 0.10 buy carries 2.3 units of surprise, a 0.50
-buy only 0.7. We weight each low-price buy's surprise by its share of the whole
-market's volume, so a $20k long-shot bet in a $200k market counts far more than in a
-$20M market:
+buy only 0.7. We weight each low-price buy's surprise by its share of the market's volume *before the
+outcome became public* (what the bettor was betting against; a post-news frenzy can be
+many times larger and is irrelevant), so a $20k long-shot bet in a $200k market counts
+far more than in a $20M market:
     raw   = Σ_{price<0.30} log(1/price) × notional / market_volume
     score = 1 − exp(−raw / 0.03)      (raw 0.03 ≈ 0.63, raw 0.09 ≈ 0.95)
 """
@@ -36,7 +37,7 @@ def low_probability_conviction(ctx: PositionContext) -> SignalResult:
         vwap_low = low_notional / low_size
         reason = (f"Bought {money(low_notional)} of the winning outcome at an average price of "
                   f"{vwap_low:.2f} (≈{vwap_low:.0%} implied chance) — {low_notional / vol:.1%} of the market's "
-                  f"total volume; the position paid out {money(payout)} for a {money(profit)} profit"
+                  f"volume before the outcome became public; the position paid out {money(payout)} for a {money(profit)} profit"
                   + (f" ({ctx.exited_ratio:.0%} of the shares were sold before the outcome became public)."
                      if ctx.exited_ratio > 0 else "."))
     else:
