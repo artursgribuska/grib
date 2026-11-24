@@ -79,14 +79,19 @@ class CaseResult:
 
 
 def make_client():
-    """Anthropic client. Raises MissingApiKey with a plain-language hint if no key is set."""
+    """Anthropic client. Raises MissingApiKey with a plain-language hint if no key is set.
+
+    Reads GRIB_ANTHROPIC_API_KEY first: Claude Code cloud sessions strip ANTHROPIC_API_KEY
+    from the container, so the key has to be stored under another name there.
+    """
     load_dotenv()
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    key = os.environ.get("GRIB_ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+    if not key:
         raise MissingApiKey(
-            "ANTHROPIC_API_KEY is not set. Add it to your environment (or to a .env file in the "
-            "project folder: ANTHROPIC_API_KEY=sk-ant-...) and run again.")
+            "No API key found. Set GRIB_ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY) in your "
+            "environment or in a .env file in the project folder, then run again.")
     import anthropic
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(api_key=key)
 
 
 def llm_text(case: dict) -> str:

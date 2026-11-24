@@ -15,7 +15,7 @@ a case file. This demo runs on **public Polymarket data only**.
 3. `uv run python -m ingest.run` — downloads ~200 recently resolved markets and all their trades into `data/integrity.duckdb` (≈20 min first time; cached afterwards)
 4. `uv run python -m ingest.enrich` — fetches public wallet facts (join date, lifetime markets) for candidate wallets (≈12 min first time)
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
-6. Put your Anthropic API key in the environment (`export ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`)
+6. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
 7. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
 8. `uv run pytest` — run the tests
 
