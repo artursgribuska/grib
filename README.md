@@ -10,6 +10,11 @@ a case file. This demo runs on **public Polymarket data only**.
 
 ## Quick start
 
+**Day to day:** `uv run python -m pipeline` runs everything below in one go and is safe to repeat
+(e.g. daily): new markets are added, caches are reused, and AI case files are only written for
+alerts that are new or whose score changed. Then open `data/dashboard/index.html`, review alerts,
+and record decisions (see *Reviewing alerts*). Step by step, first time:
+
 1. Install [uv](https://docs.astral.sh/uv/): `curl -LsSf https://astral.sh/uv/install.sh | sh`
 2. `uv sync` (installs Python 3.12 + dependencies)
 3. `uv run python -m ingest.run` — downloads ~200 recently resolved markets and all their trades into `data/integrity.duckdb` (≈20 min first time; cached afterwards)
@@ -21,6 +26,25 @@ a case file. This demo runs on **public Polymarket data only**.
 9. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
 10. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
 11. `uv run pytest` — run the tests
+
+## Reviewing alerts
+
+Each alert on the dashboard has a review box: pick **confirmed**, **dismissed**,
+**escalated** or **needs info**, add a note (required to dismiss) and save. Decisions stay
+in your browser until you click **Export decisions**, then record them:
+
+    uv run python -m app.review import decisions-2026-11-24.json --by <initials>
+
+or straight from the terminal:
+
+    uv run python -m app.review queue                          # open alerts
+    uv run python -m app.review decide CASE-99B29C1E78 needs_info --note "KYC requested" --by ag
+    uv run python -m app.review history CASE-99B29C1E78        # audit trail
+    uv run python -m app.review stats                          # which signals reviewers confirm
+
+Decisions are append-only (who, when, why, and the score at the time) so the trail survives for
+audit. `stats` compares confirmed and dismissed alerts per signal and reports a *lift*; it warns
+until there are 20 closed decisions and never changes weights by itself.
 
 ## Case files
 

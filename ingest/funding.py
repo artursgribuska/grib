@@ -227,8 +227,10 @@ def scan_one(rpc: Rpc, row) -> tuple[dict, list[dict]]:
 def run(con: duckdb.DuckDBPyConnection, rpc: Rpc, workers: int = 4, rescan: bool = False) -> dict:
     con.execute(DDL)
     tg = targets(con)
+    # archive_unavailable will fail again on the same node: retried only with --rescan (e.g. after
+    # pointing POLYGON_RPC_URL at an archive node)
     done = set() if rescan else {r[0] for r in con.execute(
-        "SELECT account_id FROM wallet_funding_scans WHERE status = 'ok'").fetchall()}
+        "SELECT account_id FROM wallet_funding_scans WHERE status IN ('ok', 'archive_unavailable')").fetchall()}
     todo = [r for r in tg.itertuples() if r.account_id not in done]
     log.info("%d target wallets (%d already scanned), scanning %d", len(tg), len(done), len(todo))
     scans, transfers = [], []

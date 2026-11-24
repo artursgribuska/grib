@@ -61,11 +61,14 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
     funding = (con.execute("SELECT * FROM funding_clusters LIMIT 15").df() if "funding_clusters" in t else pd.DataFrame())
     scans = (dict(con.execute("SELECT status, count(*) FROM wallet_funding_scans GROUP BY 1").fetchall())
              if "wallet_funding_scans" in t else {})
+    reviews = (con.execute("""SELECT position_id, decision, reviewer, note, decided_at FROM (
+                    SELECT *, row_number() OVER (PARTITION BY position_id ORDER BY decided_at DESC) rn FROM reviews)
+                  WHERE rn = 1""").df().set_index("position_id") if "reviews" in t else pd.DataFrame())
     bt_path = config.DATA_DIR / "backtest.csv"
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
     return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
                 stats=stats, events=events, wallets=wallets, backtest=backtest,
-                funding=funding, scans=scans)
+                funding=funding, scans=scans, reviews=reviews)
 
 
 def bar(contrib: dict) -> str:
@@ -110,8 +113,25 @@ def alert_rows(d: dict) -> str:
         badge = (f'<span class="badge {e(case.risk_level.lower())}">{e(case.risk_level)}</span>'
                  + ("" if case.checks_passed else ' <span class="badge warn">check</span>')) if case is not None else ""
         body = case_html(json.loads(case.case_json)) if case is not None else "<p class=muted>No case file yet.</p>"
+        rv = d["reviews"].loc[a.position_id] if len(d["reviews"]) and a.position_id in d["reviews"].index else None
+        status = rv.decision if rv is not None else "open"
+        cid = case_id(a.position_id)
+        rv_line = (f'<p class="muted">Last decision: <b>{e(rv.decision)}</b> by {e(rv.reviewer)} on '
+                   f'{e(str(rv.decided_at)[:16])}{" — " + e(rv.note) if rv.note else ""}</p>') if rv is not None else ""
+        review = f"""
+        <div class="review" data-case="{e(cid)}">
+          <h4>Review</h4>{rv_line}
+          <div class="rv-row">
+            <select aria-label="Decision"><option value="">Decision…</option>
+              <option value="confirmed">Confirmed</option><option value="dismissed">Dismissed</option>
+              <option value="escalated">Escalated</option><option value="needs_info">Needs info</option></select>
+            <input type="text" class="rv-note" placeholder="Note (required to dismiss)" aria-label="Note">
+            <button type="button" class="rv-save">Save</button><span class="rv-msg muted"></span>
+          </div>
+        </div>"""
+        badge += f' <span class="badge st-{e(status)}" data-status>{e(status.replace("_", " "))}</span>'
         rows.append(f"""
-    <details class="alert" data-cat="{e(a.category)}">
+    <details class="alert" data-cat="{e(a.category)}" data-status="{e(status)}" data-case="{e(cid)}">
       <summary>
         <span class="rank">{rank}</span>
         <span class="score">{a.score:.1f}</span>
@@ -126,6 +146,7 @@ def alert_rows(d: dict) -> str:
           outcome public (est.) {e(str(a.certainty_at)[:16])} · resolved {e(str(a.resolved_at)[:16])}</p>
         <div class="scroll"><table class="sig"><thead><tr><th>Signal</th><th>0–1</th><th>Points</th><th>Why</th></tr></thead>
           <tbody>{sig_list}</tbody></table></div>
+        {review}
         {body}
       </div>
     </details>""")
@@ -212,14 +233,49 @@ border-radius:14px;padding:3px 10px;cursor:pointer;font-size:13px}.filters butto
 table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:500}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .sig td:first-child{white-space:nowrap}
+.badge.st-open{color:var(--muted)}.badge.st-confirmed{color:var(--high)}.badge.st-dismissed{color:var(--low)}
+.badge.st-escalated,.badge.st-needs_info{color:var(--med)}
+.review{margin-top:14px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}.review h4{margin:0 0 6px}
+.rv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rv-row select,.rv-row input,.rv-row button,.toolbar button,.toolbar input{
+font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.rv-row input{flex:1;min-width:160px}.rv-row button,.toolbar button{cursor:pointer}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
 @media (max-width:640px){.alert summary{grid-template-columns:24px 40px 1fr;}.alert summary .bar{grid-column:2/4}.alert summary .q{grid-column:1/4}
 .alert summary .badge{grid-column:1/4;justify-self:start}.sig{min-width:560px}.body{padding:4px 10px 14px}}
 """
 
 JS = """
+const KEY='grib-review-decisions';
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return []}};
+const store=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(e){}};
+let cat='all';
+const openOnly=document.getElementById('open-only');
+function applyFilters(){document.querySelectorAll('.alert').forEach(a=>{
+  const st=a.dataset.status, closed=(st==='confirmed'||st==='dismissed');
+  a.style.display=((cat==='all'||a.dataset.cat===cat)&&!(openOnly.checked&&closed))?'':'none'})}
 document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.filters button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  const c=b.dataset.cat;document.querySelectorAll('.alert').forEach(a=>{a.style.display=(c==='all'||a.dataset.cat===c)?'':'none'})}));
+  cat=b.dataset.cat;applyFilters()}));
+openOnly.addEventListener('change',applyFilters);
+function mark(caseId,decision){const a=document.querySelector('.alert[data-case="'+caseId+'"]');if(!a)return;
+  a.dataset.status=decision;const b=a.querySelector('[data-status]');b.textContent=decision.replace('_',' ')+' (unsent)';
+  b.className='badge st-'+decision}
+function count(){const n=load().length;document.getElementById('rv-count').textContent=
+  n?n+' decision(s) not yet imported':'No unsent decisions';document.getElementById('rv-export').disabled=!n}
+load().forEach(x=>mark(x.case_id,x.decision));count();applyFilters();
+document.querySelectorAll('.review').forEach(r=>r.querySelector('.rv-save').addEventListener('click',()=>{
+  const d=r.querySelector('select').value,n=r.querySelector('.rv-note').value.trim(),msg=r.querySelector('.rv-msg');
+  const who=document.getElementById('rv-who').value.trim();
+  if(!d){msg.textContent='Pick a decision.';return}
+  if(d==='dismissed'&&!n){msg.textContent='A dismissal needs a note.';return}
+  const all=load().filter(x=>x.case_id!==r.dataset.case);
+  all.push({case_id:r.dataset.case,decision:d,note:n,reviewer:who,decided_at:new Date().toISOString()});
+  store(all);mark(r.dataset.case,d);count();msg.textContent='Saved in this browser — export to record it.';applyFilters()}));
+document.getElementById('rv-export').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(load(),null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='decisions-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)});
+document.getElementById('rv-clear').addEventListener('click',()=>{if(confirm('Forget unsent decisions in this browser?')){store([]);location.reload()}});
 """
 
 
@@ -246,6 +302,15 @@ def render(d: dict) -> str:
     signal reasons and, where written, the AI case file.</p>
   <div class="legend">{legend}</div>
   <div class="filters">{filters}</div>
+  <div class="toolbar">
+    <label><input type="checkbox" id="open-only"> Open alerts only</label>
+    <input type="text" id="rv-who" placeholder="Your initials" aria-label="Reviewer" size="10">
+    <button type="button" id="rv-export">Export decisions</button>
+    <button type="button" id="rv-clear">Clear unsent</button>
+    <span id="rv-count" class="muted"></span>
+  </div>
+  <p class="muted">Decisions are kept in this browser until exported; record them with
+    <code>uv run python -m app.review import decisions-….json</code>.</p>
   {alert_rows(d)}
   {rollups(d)}
   {backtest_html(d['backtest'])}

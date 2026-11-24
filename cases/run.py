@@ -60,6 +60,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--bundles-only", action="store_true")
+    ap.add_argument("--only-new", action="store_true",
+                    help="skip alerts that already have a case file written at their current score")
     args = ap.parse_args(argv)
 
     con = duckdb.connect(str(config.DB_PATH))
@@ -80,7 +82,19 @@ def main(argv=None) -> int:
         except MissingApiKey as e:
             print(f"!! {e}\n   Writing evidence bundles only.", file=sys.stderr)
 
+    existing = set()
+    if args.only_new:
+        existing = {r[0] for r in con.execute("SELECT position_id FROM case_files").fetchall()}  # stale rows already pruned
+    written = 0
     for rank, pid in enumerate(ids, 1):
+        if pid in existing:   # re-export under the current rank so files stay in step with the ranking
+            stem = file_stem(rank, pid)
+            bj, md = con.execute("SELECT bundle_json, markdown FROM case_files WHERE position_id = ?", [pid]).fetchone()
+            (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(json.loads(bj), indent=1, ensure_ascii=False))
+            if md:
+                (OUT_DIR / f"{stem}.md").write_text(md)
+            print(f"{rank:>2}. kept    {stem} (case file already current)")
+            continue
         bundle = build_bundle(con, pid)
         stem = file_stem(rank, pid)
         (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(bundle, indent=1, ensure_ascii=False))
@@ -88,6 +102,7 @@ def main(argv=None) -> int:
             print(f"{rank:>2}. bundle  {stem}  {bundle['market']['question'][:60]}")
             continue
         res = write_case(bundle, client)
+        written += 1
         md = render_markdown(bundle, res)
         (OUT_DIR / f"{stem}.md").write_text(md)
         con.execute("INSERT OR REPLACE INTO case_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
@@ -102,7 +117,7 @@ def main(argv=None) -> int:
         if res.unmatched_numbers:
             print(f"      untraced numbers: {res.unmatched_numbers}")
     con.close()
-    print(f"\nFiles written to {OUT_DIR}")
+    print(f"\n{written} case file(s) written to {OUT_DIR}")
     return 0
 
 

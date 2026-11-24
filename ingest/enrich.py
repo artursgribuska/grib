@@ -67,7 +67,7 @@ def enrich(con: duckdb.DuckDBPyConnection, wallets: list[str], workers: int = 4)
     return n_ok
 
 
-def main() -> None:
+def main(argv=None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     con = duckdb.connect(str(config.DB_PATH))
