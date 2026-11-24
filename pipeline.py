@@ -97,8 +97,44 @@ def run(args) -> dict:
         run_id, started, datetime.now(timezone.utc).replace(tzinfo=None), json.dumps(timings), markets, scored,
         len(after), json.dumps([{"position_id": p, "score": s, "market": q} for p, s, q in new_rows]),
         error is None, error])
+    digest = write_digest(con, run_id, timings, after, new_rows, error)
     con.close()
-    return {"run_id": run_id, "steps_s": timings, "alerts": len(after), "new_alerts": new_rows, "error": error}
+    return {"run_id": run_id, "steps_s": timings, "alerts": len(after), "new_alerts": new_rows, "error": error,
+            "digest": digest}
+
+
+def write_digest(con, run_id: int, timings: dict, alerts: set, new_rows: list, error: str | None):
+    """A short Markdown summary of the run, for email / chat / a scheduler to forward."""
+    from cases.bundle import case_id
+    from scoring.score import ALERT_THRESHOLD
+    tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
+    status = {}
+    if "reviews" in tables and alerts:
+        status = dict(con.execute("""
+            SELECT coalesce(rs.decision, 'open'), count(*) FROM position_scores ps
+            LEFT JOIN (SELECT position_id, arg_max(decision, decided_at) AS decision FROM reviews GROUP BY 1) rs
+              USING (position_id)
+            WHERE ps.score >= ? GROUP BY 1""", [ALERT_THRESHOLD]).fetchall())
+    lines = [f"# Integrity Analyst — run {run_id}", "",
+             f"*{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC* · {len(alerts)} alert(s) at or above "
+             f"{ALERT_THRESHOLD:.0f} · {len(new_rows)} new since the previous run", ""]
+    if error:
+        lines += [f"**Run stopped early:** {error}", ""]
+    if new_rows:
+        lines += ["## New alerts", ""]
+        for pid, score, q in new_rows:
+            lines.append(f"- **{score:.0f}** · {q} · `{case_id(pid)}`")
+        lines.append("")
+    if status:
+        lines += ["## Review status (alerts at or above threshold)", ""]
+        lines += [f"- {k.replace('_', ' ')}: {v}" for k, v in sorted(status.items())] + [""]
+    lines += [f"Steps (seconds): {', '.join(f'{k} {v}' for k, v in timings.items())}", "",
+              "Anomalous activity warranting review — not findings of wrongdoing. Details: dashboard/index.html"]
+    out = config.OUTPUT_DIR / "digest" / f"run-{run_id:04d}.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n")
+    (out.parent / "latest.md").write_text("\n".join(lines) + "\n")
+    return out
 
 
 def main(argv=None) -> int:
@@ -115,6 +151,7 @@ def main(argv=None) -> int:
     for pid, score, q in res["new_alerts"]:
         print(f"  NEW  {score:>5}  {q[:80]}")
     print(f"step timings (s): {res['steps_s']}")
+    print(f"digest: {res['digest']}")
     if res["error"]:
         print(f"!! stopped: {res['error']}")
         return 1

@@ -12,3 +12,4 @@ data/cases/
 data/backtest.csv
 data/dashboard/
 data/*/
+data/digest/
