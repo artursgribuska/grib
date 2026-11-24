@@ -9,3 +9,4 @@ data/*.duckdb
 data/*.duckdb.wal
 data/*.log
 data/cases/
+data/backtest.csv

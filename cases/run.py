@@ -34,6 +34,28 @@ def file_stem(rank: int, position_id: str) -> str:
     return f"{rank:02d}_{case_id(position_id)}"
 
 
+def prune_stale(con: duckdb.DuckDBPyConnection, ids: list[str], top: int) -> tuple[int, int]:
+    """Drop outputs that no longer match the current scores.
+
+    * files for ranks 1..top that belong to a different position than the one now at that rank
+    * case_files rows whose position is gone or whose score changed since the case was written
+    """
+    current = {file_stem(r, pid) for r, pid in enumerate(ids, 1)}
+    n_files = 0
+    for f in list(OUT_DIR.glob("[0-9][0-9]_CASE-*")):
+        stem = f.name.split(".")[0]
+        if int(stem[:2]) <= top and stem not in current:
+            f.unlink()
+            n_files += 1
+    stale = [r[0] for r in con.execute("""
+        SELECT c.position_id FROM case_files c LEFT JOIN position_scores p USING (position_id)
+        WHERE p.position_id IS NULL
+           OR round(p.score, 1) <> TRY_CAST(json_extract(c.bundle_json, '$.score.total') AS DOUBLE)""").fetchall()]
+    for pid in stale:
+        con.execute("DELETE FROM case_files WHERE position_id = ?", [pid])
+    return n_files, len(stale)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--top", type=int, default=10)
@@ -46,6 +68,10 @@ def main(argv=None) -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     ids = [r[0] for r in con.execute(
         "SELECT position_id FROM position_scores ORDER BY score DESC LIMIT ?", [args.top]).fetchall()]
+
+    removed_files, removed_rows = prune_stale(con, ids, args.top)
+    if removed_files or removed_rows:
+        print(f"removed {removed_files} outdated file(s) and {removed_rows} outdated case_files row(s)")
 
     client = None
     if not args.bundles_only:

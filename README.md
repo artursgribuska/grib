@@ -17,7 +17,8 @@ a case file. This demo runs on **public Polymarket data only**.
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
 6. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
 7. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
-8. `uv run pytest` — run the tests
+8. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
+9. `uv run pytest` — run the tests
 
 More steps are added as milestones land (dashboard).
 
@@ -68,6 +69,32 @@ one; Medium otherwise). The case writer keeps it unless it names a specific fact
 bundle that justifies moving one level.
 
 Alerts are **anomalous activity warranting review**, not findings of wrongdoing.
+
+## Backtest
+
+There are no labelled insider cases in public data, so `eval/backtest.py` plants
+positions whose nature is known into an in-memory copy of the real data (the database
+on disk is untouched) and re-scores everything:
+
+- **informed**: a wallet that joined the day before buys the eventual winner 2–36 h before it became public, at the prevailing price (< 0.60), and holds
+- **early**: same wallet and size, bought 10–30 days before public (a long-held view)
+- **flipper**: an informed-style buy sold back before the outcome became public
+
+Results over all 200 markets, seeds 1–3 (≈30 planted positions per kind and seed),
+for categories where non-public information is plausible:
+
+| Planted | Top 1% of ~7,000 positions | At/above review threshold | Median score |
+|---|---|---|---|
+| informed | 80–82% | 36–55% | 48–52 |
+| early | 37–50% | 15–32% | 36–38 |
+| flipper | 11–17% | 0–7% | 19–22 |
+
+Informed trades in sports and 5-minute crypto markets are **not** caught (0% at threshold):
+those markets trade almost entirely in their final hours, so timing cannot tell an
+informed buyer from the crowd. That is a deliberate trade-off, not a bug. Detection
+falls off sharply above an entry price of 0.30 (0% caught at 0.45–0.60). Tapering the
+low-price cutoff to 0.60 lifted the at-threshold rate but cut the top-1% rate (81% → 74%)
+by also lifting real positions, so it was not adopted.
 
 ## How it is organised
 
