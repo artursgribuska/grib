@@ -7,7 +7,7 @@ together — the strongest evidence of coordination available in public data.
     uv run python -m ingest.funding            # flagged wallets + their entry-cohort peers
     uv run python -m ingest.funding --offline  # cache only (tests / no network)
 
-What is scanned, per wallet: USDC.e and native USDC `Transfer` logs *into* the wallet
+What is scanned, per wallet: USDC.e, native USDC and pUSD (Polymarket USD) `Transfer` logs *into* the wallet
 in a window around when it started trading — from a day before its venue join date (or
 its first trade in our data, if the join date is unknown) up to that first trade,
 at most SCAN_DAYS long. That is where the initial deposit sits.
@@ -57,7 +57,9 @@ PRE_JOIN_HOURS = 24
 TOKENS = {
     "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": "USDC.e",
     "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359": "USDC",
+    "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb": "pUSD",   # Polymarket USD, the venue's collateral token
 }
+ZERO_ADDRESS = "0x" + "0" * 40   # token mints (e.g. pUSD minted on deposit) — no personal sender
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 CACHE = config.CACHE_DIR / "polygon-rpc"
 MIN_TARGET_SCORE = 40.0        # wallets in alerts at/above this score, plus their cohort peers
@@ -221,10 +223,11 @@ def scan_one(rpc: Rpc, row) -> tuple[dict, list[dict]]:
     return scan, tx_rows
 
 
-def run(con: duckdb.DuckDBPyConnection, rpc: Rpc, workers: int = 4) -> dict:
+def run(con: duckdb.DuckDBPyConnection, rpc: Rpc, workers: int = 4, rescan: bool = False) -> dict:
     con.execute(DDL)
     tg = targets(con)
-    done = {r[0] for r in con.execute("SELECT account_id FROM wallet_funding_scans WHERE status = 'ok'").fetchall()}
+    done = set() if rescan else {r[0] for r in con.execute(
+        "SELECT account_id FROM wallet_funding_scans WHERE status = 'ok'").fetchall()}
     todo = [r for r in tg.itertuples() if r.account_id not in done]
     log.info("%d target wallets (%d already scanned), scanning %d", len(tg), len(done), len(todo))
     scans, transfers = [], []
@@ -246,6 +249,9 @@ def run(con: duckdb.DuckDBPyConnection, rpc: Rpc, workers: int = 4) -> dict:
                                             WHERE sender NOT IN (SELECT sender FROM wallet_funding_senders)""").fetchall()]
     rows = []
     for s in senders:
+        if s == ZERO_ADDRESS:
+            rows.append({"sender": s, "is_contract": True})   # a mint: infrastructure by definition
+            continue
         try:
             rows.append({"sender": s, "is_contract": rpc.is_contract(s)})
         except RpcError:
@@ -268,12 +274,13 @@ def main(argv=None) -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     ap = argparse.ArgumentParser()
     ap.add_argument("--offline", action="store_true")
+    ap.add_argument("--rescan", action="store_true", help="scan wallets again even if already scanned")
     args = ap.parse_args(argv)
     con = duckdb.connect(str(config.DB_PATH))
     tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
     if not {"position_scores", "entry_cohorts"} <= tables:
         raise SystemExit("Run `uv run python -m scoring.run` first: funding targets come from the alerts.")
-    res = run(con, Rpc(offline=args.offline))
+    res = run(con, Rpc(offline=args.offline), rescan=args.rescan)
     log.info("done: %s", res)
     con.close()
 

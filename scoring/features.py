@@ -176,7 +176,8 @@ def build_funding_links(con: duckdb.DuckDBPyConnection) -> None:
     CREATE OR REPLACE TABLE funding_senders AS
     WITH t AS (SELECT DISTINCT account_id, sender FROM wallet_funding_transfers)
     SELECT t.sender, count(*) AS wallets_funded, coalesce(any_value(s.is_contract), false) AS is_contract,
-           coalesce(any_value(s.is_contract), false) OR count(*) >= {FUNDING_HUB_MIN_WALLETS} AS infrastructure,
+           coalesce(any_value(s.is_contract), false) OR count(*) >= {FUNDING_HUB_MIN_WALLETS}
+             OR t.sender = '0x0000000000000000000000000000000000000000' AS infrastructure,
            list(t.account_id ORDER BY t.account_id) AS wallets
     FROM t LEFT JOIN wallet_funding_senders s USING (sender)
     GROUP BY 1;

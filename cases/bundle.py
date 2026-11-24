@@ -34,7 +34,7 @@ DATA_LIMITATIONS = [
 ]
 NO_FUNDING = ("No wallet-funding data was available for this account: accounts that entered together cannot be "
               "shown to be linked.")
-FUNDING_SCOPE = ("Funding covers only USDC transfers into the wallet on Polygon around when it started trading; "
+FUNDING_SCOPE = ("Funding covers only USDC and pUSD (Polymarket USD) transfers into the wallet on Polygon around when it started trading; "
                  "deposits through exchanges, bridges or card on-ramps come from shared addresses and link nothing.")
 
 RATING_RULES = [

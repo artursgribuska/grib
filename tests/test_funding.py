@@ -105,3 +105,15 @@ def test_direct_link_only_between_trading_wallets():
     s = {(x.ctx.market_id, x.ctx.account_id): x for x in run(con)}
     assert ("insider", "peer0") in set(con.execute("SELECT a, b FROM funding_edges WHERE kind='direct'").fetchall())
     assert s[("slow", "insider")].ctx.cohort_funding_links == 1
+
+
+def test_mints_from_zero_address_link_nothing():
+    from scoring.run import run
+    con = build_db()
+    run(con)
+    day = T - timedelta(hours=30)
+    fake = FakeRpc({w: [_tx(funding.ZERO_ADDRESS, day)] for w in ("insider", "peer0", "peer1")})
+    funding.run(con, fake, workers=1)
+    s = {(x.ctx.market_id, x.ctx.account_id): x for x in run(con)}
+    assert con.execute("SELECT count(*) FROM funding_edges").fetchone()[0] == 0
+    assert s[("slow", "insider")].ctx.cohort_funding_links == 0
