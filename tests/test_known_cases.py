@@ -34,7 +34,7 @@ def test_case_market_is_loaded_scored_and_reported(tmp_path, monkeypatch):
 
     monkeypatch.setattr(kc, "DB", tmp_path / "kc.duckdb")
     monkeypatch.setattr(kc, "OUT", tmp_path / "kc")
-    monkeypatch.setattr(kc, "CASES", [{"key": "prize", "event": "prize-2026", "match": ["Alice"], "about": "test"}])
+    monkeypatch.setattr(kc, "CASES", [{"key": "prize", "events": ["prize-2026"], "match": ["Alice"], "about": "test"}])
     monkeypatch.setattr(kc, "gamma_event", lambda http, slug: event)
     monkeypatch.setattr(kc.DataApiClient, "iter_market_trades", lambda self, cid, max_rows=None: iter(raw))
     import ingest.enrich

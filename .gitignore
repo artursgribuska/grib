@@ -13,3 +13,4 @@ data/backtest.csv
 data/dashboard/
 data/*/
 data/digest/
+data/*.building*

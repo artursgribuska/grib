@@ -41,16 +41,23 @@ DB = config.DATA_DIR / "known_cases.duckdb"
 OUT = config.DATA_DIR / "known_cases"
 MAX_ROWS = 600_000
 
+GOOGLE_2025 = ["1-searched-person-on-google-this-year", "1-searched-passings-on-google-this-year",
+               "1-searched-actor-on-google-this-year", "2-searched-person-on-google-this-year",
+               "1-searched-news-on-google-this-year-385", "1-searched-athlete-on-google-this-year",
+               "1-searched-movie-on-google-this-year", "1-searched-song-on-google-this-year",
+               "1-searched-tv-show-on-google-this-year", "1-searched-game-on-google-this-year"]
+
+# "events": Gamma event slugs; "match": substrings selecting markets (None = every market of the
+# events, losers included — needed when the pattern is many wins across sibling markets).
 CASES = [
-    {"key": "nobel-2025", "event": "nobel-peace-prize-winner-2025", "match": ["Machado"],
+    {"key": "nobel-2025", "events": ["nobel-peace-prize-winner-2025"], "match": ["Machado"],
      "about": "2025 Nobel Peace Prize: the winner's price rose sharply in the hours before the announcement, "
               "and the Norwegian Nobel Institute said it would look into a possible leak."},
-    {"key": "google-person-2025", "event": "1-searched-person-on-google-this-year", "match": ["d4vd"],
-     "about": "Google Year in Search 2025: reports described accounts winning several 'most searched' markets "
-              "shortly before Google published its lists."},
-    {"key": "google-passings-2025", "event": "1-searched-passings-on-google-this-year", "match": ["Charlie Kirk"],
-     "about": "Google Year in Search 2025 (passings list), same reporting as above."},
-    {"key": "maduro-2026", "event": "maduro-out-in-2025", "match": ["January 31"],
+    {"key": "google-yis-2025", "events": GOOGLE_2025, "match": None,
+     "about": "Google Year in Search 2025: reports described an account winning many 'most searched' markets "
+              "shortly before Google published its lists. All markets of the ten list events are loaded, so an "
+              "account's wins and losses across sibling markets are both visible."},
+    {"key": "maduro-2026", "events": ["maduro-out-in-2025"], "match": ["January 31"],
      "about": "Maduro removed from power in January 2026: reports described a recently created account buying "
               "'Maduro out' shortly before the US operation became public."},
 ]
@@ -76,14 +83,13 @@ def build(base_db=config.DB_PATH) -> pd.DataFrame:
     http = CachedClient()
     api = DataApiClient(http)
     rows = []
-    for case in CASES:
-        ev = gamma_event(http, case["event"])
+    for case, ev in ((c, gamma_event(http, slug)) for c in CASES for slug in c["events"]):
         if not ev:
-            log.warning("event %s not found", case["event"])
+            log.warning("an event of %s was not found", case["key"])
             continue
         for m in ev.get("markets") or []:
             q = m.get("question") or ""
-            if not any(s.lower() in q.lower() for s in case["match"]):
+            if case["match"] and not any(s.lower() in q.lower() for s in case["match"]):
                 continue
             mk = pm.map_market(m, ev)
             if not mk["winning_outcome"]:
@@ -102,7 +108,8 @@ def build(base_db=config.DB_PATH) -> pd.DataFrame:
                 con.unregister("_t")
             rows.append({"case": case["key"], "market_id": mk["market_id"], "question": q,
                          "winner": mk["winning_outcome"], "trades": len(trades), "truncated": len(raw) >= MAX_ROWS})
-            log.info("%s: %s — %d trades%s", case["key"], q[:60], len(trades), " (TRUNCATED)" if len(raw) >= MAX_ROWS else "")
+            log.debug("%s: %s — %d trades%s", case["key"], q[:60], len(trades), " (TRUNCATED)" if len(raw) >= MAX_ROWS else "")
+        log.info("%s: event %s loaded", case["key"], ev.get("slug"))
     cases = pd.DataFrame(rows)
     con.register("_c", cases)
     con.execute("CREATE OR REPLACE TABLE known_case_markets AS SELECT * FROM _c")
@@ -140,27 +147,49 @@ def report() -> str:
         if cm.empty:
             continue
         lines += [f"## {case['key']}", "", case["about"], ""]
-        for m in cm.itertuples():
-            pos = ranked[ranked.market_id == m.market_id].sort_values("rank")
-            st = con.execute("SELECT certainty_at, resolved_at FROM market_state WHERE market_id = ?", [m.market_id]).fetchone()
-            lines += [f"**{m.question}** — winner '{m.winner}', {m.trades:,} trades"
+        pos = ranked[ranked.market_id.isin(cm.market_id)].sort_values("rank")
+        n_trades = int(cm.trades.sum())
+        if len(cm) == 1:
+            m = cm.iloc[0]
+            st = con.execute("SELECT certainty_at FROM market_state WHERE market_id = ?", [m.market_id]).fetchone()
+            lines += [f"**{m.question}** — winner '{m.winner}', {n_trades:,} trades"
                       + (" (history truncated)" if m.truncated else "")
                       + (f"; outcome estimated public at {st[0]:%Y-%m-%d %H:%M} UTC" if st else ""), ""]
-            if pos.empty:
-                lines += ["No candidate positions (winning-side, ≥ $1,000, before the public moment).", ""]
-                continue
-            at = (pos.score >= ALERT_THRESHOLD).sum()
-            lines += [f"{len(pos)} candidate positions; {at} at or above the threshold; best rank **{int(pos['rank'].min())}** "
-                      f"of {total:,}.", "",
-                      "| Rank | Score | Account | Cost | Avg price | First buy | Hours before public | Top signals |",
-                      "|---|---|---|---|---|---|---|---|"]
-            for p in pos.head(8).itertuples():
-                contrib = json.loads(p.contributions_json)
-                tops = ", ".join(f"{LABELS[k]} {v:.0f}" for k, v in sorted(contrib.items(), key=lambda kv: -kv[1])[:3] if v > 0)
-                lead = (p.certainty_at - p.first_buy_ts).total_seconds() / 3600
-                lines.append(f"| {int(p.rank)} | {p.score:.1f} | {short_account(p.account_id)} | ${p.position_notional:,.0f} | "
-                             f"{p.avg_price:.2f} | {p.first_buy_ts:%Y-%m-%d %H:%M} | {lead:,.1f} | {tops} |")
-            lines.append("")
+        else:
+            lines += [f"**{len(cm)} markets** loaded ({n_trades:,} trades"
+                      + (f"; {int(cm.truncated.sum())} truncated" if cm.truncated.any() else "") + ").", ""]
+        if pos.empty:
+            lines += ["No candidate positions (winning-side, ≥ $1,000, before the public moment).", ""]
+            continue
+        at = (pos.score >= ALERT_THRESHOLD).sum()
+        lines += [f"{len(pos)} candidate positions; {at} at or above the threshold; best rank **{int(pos['rank'].min())}** "
+                  f"of {total:,}.", "",
+                  "| Rank | Score | Account | Market | Cost | Avg price | First buy | Hours before public | Top signals |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        for p in pos.head(8).itertuples():
+            contrib = json.loads(p.contributions_json)
+            tops = ", ".join(f"{LABELS[k]} {v:.0f}" for k, v in sorted(contrib.items(), key=lambda kv: -kv[1])[:3] if v > 0)
+            lead = (p.certainty_at - p.first_buy_ts).total_seconds() / 3600
+            lines.append(f"| {int(p.rank)} | {p.score:.1f} | {short_account(p.account_id)} | {p.question[:45]} | "
+                         f"${p.position_notional:,.0f} | {p.avg_price:.2f} | {p.first_buy_ts:%Y-%m-%d %H:%M} | {lead:,.1f} | {tops} |")
+        lines.append("")
+        if len(cm) > 1:   # accounts with several winning long shots across the case's markets
+            multi = con.execute(f"""
+                SELECT account_id, count(*) AS wins, sum(buy_notional) AS usd,
+                       sum(buy_notional) / sum(buy_size) AS px
+                FROM positions_all
+                WHERE market_id IN (SELECT unnest(?)) AND is_winner AND buy_notional >= 250
+                  AND buy_notional / buy_size < 0.35
+                GROUP BY 1 HAVING count(*) >= 2 ORDER BY wins DESC, usd DESC LIMIT 6""",
+                [list(cm.market_id)]).fetchall()
+            if multi:
+                lines += ["Accounts that won two or more long shots (bought below 0.35, ≥ $250) across these markets:", "",
+                          "| Account | Long shots won | Cost | Avg price | Best rank |", "|---|---|---|---|---|"]
+                for acct, wins, usd, px in multi:
+                    r = ranked[(ranked.account_id == acct) & ranked.market_id.isin(cm.market_id)]["rank"]
+                    lines.append(f"| {short_account(acct)} | {wins} | ${usd:,.0f} | {px:.2f} | "
+                                 f"{int(r.min()) if len(r) else '—'} |")
+                lines.append("")
     con.close()
     text = "\n".join(lines) + "\n"
     OUT.mkdir(parents=True, exist_ok=True)
