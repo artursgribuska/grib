@@ -18,9 +18,8 @@ a case file. This demo runs on **public Polymarket data only**.
 6. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
 7. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
 8. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
-9. `uv run pytest` — run the tests
-
-More steps are added as milestones land (dashboard).
+9. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
+10. `uv run pytest` — run the tests
 
 ## Case files
 
@@ -104,8 +103,9 @@ by also lifting real positions, so it was not adopted.
 | `schema/` | The venue-agnostic canonical schema and the Polymarket → canonical mapper |
 | `signals/` | One module per detection signal; each returns a score, a reason and evidence |
 | `scoring/` | Feature tables (from canonical tables only) and the weighted score |
+| `eval/`   | Backtest: planted trades in an in-memory copy of the data |
+| `app/`    | Static HTML dashboard built from the database |
 | `cases/` | Evidence bundles, the case-file prompt, the LLM writer and the number/language checks |
-| `app/`, `eval/` | Later milestones |
 
 **Canonical schema** — every signal reads only these tables, so an operator's CSV can be
 mapped in later without changing the engine:
