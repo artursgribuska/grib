@@ -201,7 +201,7 @@ engine flaws, now fixed (each checked against the planted-trade backtest, which 
 
 **Limits.** Three cases is anecdote-sized evidence, chosen because they were reported. Where
 the public reports describe many modest wins across sibling markets (Google), the engine is
-weaker: no single position stands out, and the account most often named as a cheap d4vd buyer
+weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
 
 ## How it is organised
