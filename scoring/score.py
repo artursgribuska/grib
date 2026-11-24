@@ -105,11 +105,20 @@ def signal_strength(scores: dict[str, float]) -> dict[str, list[str]]:
     }
 
 
-def risk_band(total: float, scores: dict[str, float], exited_ratio: float) -> tuple[str, str]:
+def risk_band(total: float, scores: dict[str, float], exited_ratio: float,
+              news_before_first_buy: bool = False) -> tuple[str, str]:
     """Deterministic starting point for the case-file risk rating, with the rule that fired.
 
     The case writer may depart from it, but must say why.
     """
+    band, rule = _base_band(total, scores, exited_ratio)
+    if news_before_first_buy and band != "Low":
+        lower = {"High": "Medium", "Medium": "Low"}[band]
+        return lower, f"{rule}; moved down from {band} because relevant news was published before the first buy"
+    return band, rule
+
+
+def _base_band(total: float, scores: dict[str, float], exited_ratio: float) -> tuple[str, str]:
     st = signal_strength(scores)
     strong_beh = [k for k in st["strong"] if k in BEHAVIOURAL]
     any_beh = [k for k in st["strong"] + st["supporting"] if k in BEHAVIOURAL]

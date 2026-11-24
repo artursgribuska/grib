@@ -19,6 +19,7 @@ from scoring import features
 from scoring.run import ROLLUP_MIN_SCORE
 from scoring.score import (ALERT_THRESHOLD, BEHAVIOURAL, EXIT_MAX_PENALTY, HEDGE_MAX_PENALTY, LABELS,
                            STRONG_AT, SUPPORTING_AT, WEIGHTS, risk_band, short_account, signal_strength)
+from ingest.news import news_for_position
 from signals import low_probability, timing
 
 DISCLAIMER = ("This is anomalous activity warranting review, based on statistical "
@@ -43,7 +44,11 @@ RATING_RULES = [
     f"Low if the engine score is below the review threshold of {ALERT_THRESHOLD:.0f}.",
     "High if the engine score is 65 or more with at least three strong signals, including a behavioural one.",
     "Medium otherwise.",
+    "Then one level lower (not below Low) if news.relevant_before_first_buy is above 0.",
 ]
+NEWS_LIMIT = ("News comes from GDELT, an index of online news: it misses wires, social media and official releases, "
+              "records when it saw an article (which can lag publication), and relevance was judged from headlines "
+              "only. Finding no relevant article is weak evidence that no news existed.")
 
 MAX_TRADES = 40
 MAX_PRICE_POINTS = 160
@@ -99,7 +104,9 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
     lp_ev = json.loads(sigs.loc[sigs.signal == low_probability.NAME, "evidence_json"].iloc[0])
     sig_scores = dict(zip(sigs.signal, sigs.score.astype(float)))
     strength = signal_strength(sig_scores)
-    band, band_rule = risk_band(float(p.score), sig_scores, float(p.exited_ratio))
+    news = news_for_position(con, mid, p.first_buy_ts.to_pydatetime())
+    band, band_rule = risk_band(float(p.score), sig_scores, float(p.exited_ratio),
+                                news.get("relevant_before_first_buy", 0) > 0)
     funding = funding_context(con, acct)
 
     bundle = {
@@ -181,7 +188,10 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
         "market_context": market_context(con, venue, mid, acct, certainty),
         "event_context": event_context(con, mid, acct, position_id),
         "funding": funding,
-        "data_limitations": DATA_LIMITATIONS + [FUNDING_SCOPE if funding["status"] == "ok" else NO_FUNDING],
+        "news": news,
+        "data_limitations": [d for d in DATA_LIMITATIONS if not (news.get("status") == "ok" and d.startswith("No news"))]
+                            + [FUNDING_SCOPE if funding["status"] == "ok" else NO_FUNDING]
+                            + ([NEWS_LIMIT] if news.get("status") == "ok" else []),
     }
     return bundle
 

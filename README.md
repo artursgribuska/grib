@@ -22,10 +22,11 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
 6. `uv run python -m ingest.funding`, then `uv run python -m scoring.run` again — optional: scans on-chain USDC deposits into flagged wallets and their entry-cohort peers (Polygon public RPC, no key; ≈10 min; `--rescan` to redo) so scoring can see shared funders
 7. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
-8. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
-9. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
-10. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
-11. `uv run pytest` — run the tests
+8. `uv run python -m ingest.news` — optional: searches GDELT for news about each alerted market (needs the key; ≈1 min per 10 markets)
+9. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
+10. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
+11. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
+12. `uv run pytest` — run the tests
 
 ## Your own data (operators)
 
@@ -111,6 +112,15 @@ fund 8+ scanned wallets are treated as infrastructure
 (bridges, exchanges, on-ramps) and link nothing. Public RPC nodes only serve recent
 history without a key; older wallets are marked `archive_unavailable` (point
 `POLYGON_RPC_URL` at an archive node to cover them).
+
+**News timestamps** (`ingest/news.py`, optional, uses the Anthropic key). For each alerted
+market, Claude writes a search query, GDELT (a free index of online news) returns articles
+from 72 h before the first flagged buy to 6 h after the outcome became public, and Claude marks
+headlines that report or clearly signal the winning outcome. The bundle then says whether
+relevant news was published *before the account's first buy* — the strongest innocent
+explanation — and the starting risk rating drops one level if it was. GDELT misses wires,
+social media and official releases and records when it *saw* an article, so "no relevant
+article" is weak evidence; case files say so.
 
 `scoring.run` also rolls alerts up **by event** (related markets on the same story, e.g.
 several "…by date?" variants) and **by wallet** (accounts flagged in several markets),

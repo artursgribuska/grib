@@ -34,6 +34,13 @@ def file_stem(rank: int, position_id: str) -> str:
     return f"{rank:02d}_{case_id(position_id)}"
 
 
+def evidence_fingerprint(bundle: dict) -> str:
+    """Hash of everything the case writer sees, except when the bundle was generated."""
+    import hashlib
+    b = {k: v for k, v in bundle.items() if k != "generated_at"}
+    return hashlib.sha256(json.dumps(b, sort_keys=True, default=str).encode()).hexdigest()
+
+
 def prune_stale(con: duckdb.DuckDBPyConnection, ids: list[str], top: int) -> tuple[int, int]:
     """Drop outputs that no longer match the current scores.
 
@@ -82,20 +89,21 @@ def main(argv=None) -> int:
         except MissingApiKey as e:
             print(f"!! {e}\n   Writing evidence bundles only.", file=sys.stderr)
 
-    existing = set()
-    if args.only_new:
-        existing = {r[0] for r in con.execute("SELECT position_id FROM case_files").fetchall()}  # stale rows already pruned
+    existing: dict[str, str] = {}
+    if args.only_new:   # position -> fingerprint of the evidence its case file was written from
+        existing = {pid: evidence_fingerprint(json.loads(bj))
+                    for pid, bj in con.execute("SELECT position_id, bundle_json FROM case_files").fetchall()}
     written = 0
     for rank, pid in enumerate(ids, 1):
-        if pid in existing:   # re-export under the current rank so files stay in step with the ranking
+        bundle = build_bundle(con, pid)
+        if existing.get(pid) == evidence_fingerprint(bundle):   # same evidence: re-export under the current rank
             stem = file_stem(rank, pid)
             bj, md = con.execute("SELECT bundle_json, markdown FROM case_files WHERE position_id = ?", [pid]).fetchone()
             (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(json.loads(bj), indent=1, ensure_ascii=False))
             if md:
                 (OUT_DIR / f"{stem}.md").write_text(md)
-            print(f"{rank:>2}. kept    {stem} (case file already current)")
+            print(f"{rank:>2}. kept    {stem} (evidence unchanged)")
             continue
-        bundle = build_bundle(con, pid)
         stem = file_stem(rank, pid)
         (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(bundle, indent=1, ensure_ascii=False))
         if client is None:

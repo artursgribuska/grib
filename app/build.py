@@ -65,11 +65,18 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
     reviews = (con.execute("""SELECT position_id, decision, reviewer, note, decided_at FROM (
                     SELECT *, row_number() OVER (PARTITION BY position_id ORDER BY decided_at DESC) rn FROM reviews)
                   WHERE rn = 1""").df().set_index("position_id") if "reviews" in t else pd.DataFrame())
+    news: dict = {}
+    if "news_queries" in t:
+        for mid in con.execute("SELECT market_id FROM news_queries WHERE status = 'ok'").fetchall():
+            news[mid[0]] = []
+        for mid, ts, dom, title in con.execute("""SELECT market_id, seen_at, domain, title FROM news_articles
+                                                  WHERE label IS NOT NULL ORDER BY seen_at""").fetchall():
+            news.setdefault(mid, []).append((ts, dom, title))
     bt_path = config.OUTPUT_DIR / "backtest.csv"
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
     return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
                 stats=stats, events=events, wallets=wallets, backtest=backtest,
-                funding=funding, scans=scans, reviews=reviews, venues=venues)
+                funding=funding, scans=scans, reviews=reviews, venues=venues, news=news)
 
 
 def bar(contrib: dict) -> str:
@@ -114,6 +121,20 @@ def alert_rows(d: dict) -> str:
         badge = (f'<span class="badge {e(case.risk_level.lower())}">{e(case.risk_level)}</span>'
                  + ("" if case.checks_passed else ' <span class="badge warn">check</span>')) if case is not None else ""
         body = case_html(json.loads(case.case_json)) if case is not None else "<p class=muted>No case file yet.</p>"
+        nw = d["news"].get(a.market_id)
+        news_line = ""
+        if nw is not None:
+            before = [r for r in nw if r[0] < a.first_buy_ts]
+            if before:
+                t0, dom, title = before[0]
+                news_line = (f'<p class="newsflag">Relevant news before the first buy: <b>{e(title)}</b> '
+                             f'({e(dom)}, {e(str(t0)[:16])} UTC)</p>')
+            elif nw:
+                t0, dom, title = nw[0]
+                news_line = (f'<p class="muted">Earliest relevant news came after the first buy: {e(title)} '
+                             f'({e(dom)}, {e(str(t0)[:16])} UTC)</p>')
+            else:
+                news_line = '<p class="muted">News searched: no relevant headline found.</p>'
         rv = d["reviews"].loc[a.position_id] if len(d["reviews"]) and a.position_id in d["reviews"].index else None
         status = rv.decision if rv is not None else "open"
         cid = case_id(a.position_id)
@@ -145,6 +166,7 @@ def alert_rows(d: dict) -> str:
         <p class="expl">{e(a.explanation)}</p>
         <p class="muted">Case ref {e(case_id(a.position_id))} · first buy {e(str(a.first_buy_ts)[:16])} ·
           outcome public (est.) {e(str(a.certainty_at)[:16])} · resolved {e(str(a.resolved_at)[:16])}</p>
+        {news_line}
         <div class="scroll"><table class="sig"><thead><tr><th>Signal</th><th>0–1</th><th>Points</th><th>Why</th></tr></thead>
           <tbody>{sig_list}</tbody></table></div>
         {review}
@@ -240,6 +262,7 @@ th{color:var(--muted);font-weight:500}.num{text-align:right;font-variant-numeric
 .rv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.rv-row select,.rv-row input,.rv-row button,.toolbar button,.toolbar input{
 font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
 .rv-row input{flex:1;min-width:160px}.rv-row button,.toolbar button{cursor:pointer}
+.newsflag{border-left:3px solid var(--med);padding:4px 10px;background:var(--panel)}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
 @media (max-width:640px){.alert summary{grid-template-columns:24px 40px 1fr;}.alert summary .bar{grid-column:2/4}.alert summary .q{grid-column:1/4}
 .alert summary .badge{grid-column:1/4;justify-self:start}.sig{min-width:560px}.body{padding:4px 10px 14px}}

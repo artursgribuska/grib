@@ -55,6 +55,9 @@ def run(args) -> dict:
         from ingest import funding
         steps.append(("funding", lambda: funding.main([])))
         steps.append(("rescore", lambda: scoring_run.main(["--top", "10"])))
+    if not args.no_news:
+        from ingest import news
+        steps.append(("news", lambda: news.main([])))
     if not args.no_cases:
         from cases import run as cases_run
         steps.append(("cases", lambda: cases_run.main(["--top", str(args.cases), "--only-new"])))
@@ -105,6 +108,7 @@ def main(argv=None) -> int:
     ap.add_argument("--no-refresh", action="store_true", help="ingest without re-querying the market listing")
     ap.add_argument("--no-funding", action="store_true")
     ap.add_argument("--no-cases", action="store_true")
+    ap.add_argument("--no-news", action="store_true", help="skip the GDELT news search (needs the Anthropic key)")
     ap.add_argument("--cases", type=int, default=10, help="case files for the top N alerts (new/changed only)")
     res = run(ap.parse_args(argv))
     print(f"\nRUN {res['run_id']}: {res['alerts']} alerts at/above threshold, {len(res['new_alerts'])} new since last run")
