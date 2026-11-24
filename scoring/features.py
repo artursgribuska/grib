@@ -50,6 +50,7 @@ LOW_HISTORY_MAX_AGE_DAYS = 14  # ... or joined the venue at most this many days 
 
 # wallet funding (optional tables from ingest/funding.py)
 FUNDING_HUB_MIN_WALLETS = 8  # a sender funding this many scanned wallets is treated as infrastructure
+FUNDING_MIN_USD = 50         # smaller transfers are dust / address-poisoning spam, not funding
 
 
 def build_features(con: duckdb.DuckDBPyConnection) -> None:
@@ -164,6 +165,9 @@ FUNDING_TABLES = ("wallet_funding_scans", "wallet_funding_transfers", "wallet_fu
 def build_funding_links(con: duckdb.DuckDBPyConnection) -> None:
     """Who shares a funder with whom (from ingest/funding.py; empty tables if it never ran).
 
+    Transfers under FUNDING_MIN_USD are ignored throughout (dust and address-poisoning spam
+    send tiny or zero amounts to many wallets and would otherwise look like shared funders).
+
     funding_senders  each sender with how many scanned wallets it funded and whether it is
                      infrastructure (a contract, or funding ≥ FUNDING_HUB_MIN_WALLETS wallets —
                      bridges, exchanges, on-ramps), which links nothing
@@ -174,7 +178,7 @@ def build_funding_links(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(FUNDING_DDL)
     con.execute(f"""
     CREATE OR REPLACE TABLE funding_senders AS
-    WITH t AS (SELECT DISTINCT account_id, sender FROM wallet_funding_transfers)
+    WITH t AS (SELECT DISTINCT account_id, sender FROM wallet_funding_transfers WHERE amount >= {FUNDING_MIN_USD})
     SELECT t.sender, count(*) AS wallets_funded, coalesce(any_value(s.is_contract), false) AS is_contract,
            coalesce(any_value(s.is_contract), false) OR count(*) >= {FUNDING_HUB_MIN_WALLETS}
              OR t.sender = '0x0000000000000000000000000000000000000000' AS infrastructure,
@@ -184,7 +188,7 @@ def build_funding_links(con: duckdb.DuckDBPyConnection) -> None:
 
     CREATE OR REPLACE TABLE funding_edges AS
     WITH t AS (SELECT DISTINCT w.account_id, w.sender FROM wallet_funding_transfers w
-               JOIN funding_senders f USING (sender) WHERE NOT f.infrastructure)
+               JOIN funding_senders f USING (sender) WHERE NOT f.infrastructure AND w.amount >= {FUNDING_MIN_USD})
     SELECT a.account_id AS a, b.account_id AS b, 'shared_sender' AS kind, a.sender AS via
     FROM t a JOIN t b ON a.sender = b.sender AND a.account_id <> b.account_id
     UNION   -- one trading wallet funded another directly

@@ -224,18 +224,26 @@ def funding_context(con, acct: str) -> dict:
     status, f0, f1 = scan[0]
     out = {"status": status, "window_from": _ts(f0), "window_to": _ts(f1)}
     if status != "ok":
+        out["peer_pairs_sharing_a_personal_funder"] = cohort_peer_links(con, acct)
         return out
     rows = con.execute("""
-        SELECT t.ts, t.amount, t.token, t.sender, f.is_contract, f.infrastructure, f.wallets_funded, f.wallets
-        FROM wallet_funding_transfers t JOIN funding_senders f USING (sender)
-        WHERE t.account_id = ? ORDER BY t.ts LIMIT 10""", [acct]).fetchall()
+        SELECT t.ts, t.amount, t.token, t.sender, coalesce(f.is_contract, s.is_contract, false),
+               coalesce(f.infrastructure, false), f.wallets_funded, f.wallets
+        FROM wallet_funding_transfers t LEFT JOIN funding_senders f USING (sender)
+        LEFT JOIN wallet_funding_senders s USING (sender)
+        WHERE t.account_id = ? ORDER BY t.amount >= ? DESC, t.ts LIMIT 10""", [acct, features.FUNDING_MIN_USD]).fetchall()
+    def kind(amt, is_c, infra):
+        if amt < features.FUNDING_MIN_USD:
+            return "dust (ignored)"
+        return "contract" if is_c else ("shared infrastructure" if infra else "personal address")
     out["incoming_transfers"] = [{
         "time": _ts(ts), "amount_usd": _num(amt, 0), "token": tok, "sender": short_account(snd),
-        "sender_type": "contract" if is_c else ("shared infrastructure" if infra else "personal address"),
+        "sender_type": kind(amt, is_c, infra),
     } for ts, amt, tok, snd, is_c, infra, _, _ in rows]
+    out["minimum_funding_usd"] = features.FUNDING_MIN_USD
     linked = {}
-    for *_, snd, is_c, infra, n, wallets in rows:
-        if infra:
+    for ts, amt, tok, snd, is_c, infra, n, wallets in rows:
+        if infra or wallets is None or amt < features.FUNDING_MIN_USD:
             continue
         for w in wallets:
             if w != acct:
@@ -249,7 +257,17 @@ def funding_context(con, acct: str) -> dict:
         {"display_id": short_account(w), "via": via, "highest_alert_score": _num(flagged.get(w), 1)}
         for w, via in list(linked.items())[:8]]
     out["no_incoming_usdc_found"] = not rows
+    out["peer_pairs_sharing_a_personal_funder"] = cohort_peer_links(con, acct)
     return out
+
+
+def cohort_peer_links(con, acct: str) -> list[dict]:
+    """Pairs of this position's entry-cohort peers that are funding-linked to each other."""
+    rows = con.execute("""
+        SELECT DISTINCT e.a, e.b, e.via FROM entry_cohorts ec, funding_edges e
+        WHERE ec.account_id = ? AND list_contains(ec.winner_peer_ids, e.a)
+          AND list_contains(ec.winner_peer_ids, e.b) AND e.a < e.b""", [acct]).fetchall()
+    return [{"wallets": [short_account(a), short_account(b)], "via": short_account(v)} for a, b, v in rows[:5]]
 
 
 def account_trades(con, venue, mid, acct, certainty: datetime) -> list[dict]:

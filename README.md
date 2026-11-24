@@ -64,7 +64,9 @@ we scan USDC and pUSD (Polymarket USD, the venue's collateral) transfers *into* 
 around when it started trading. pUSD minted on deposit comes from the zero address and links nothing. Two wallets funded
 by the same personal address, or one funding the other, count as a funding link; a
 coordinated-entry score of at least 0.70 follows from one linked peer, 1.0 from two.
-Senders that are contracts or fund 8+ scanned wallets are treated as infrastructure
+Transfers under $50 are ignored: address-poisoning spam sends zero or tiny amounts to
+many wallets and would otherwise look like a shared funder. Senders that are contracts or
+fund 8+ scanned wallets are treated as infrastructure
 (bridges, exchanges, on-ramps) and link nothing. Public RPC nodes only serve recent
 history without a key; older wallets are marked `archive_unavailable` (point
 `POLYGON_RPC_URL` at an archive node to cover them).

@@ -117,3 +117,32 @@ def test_mints_from_zero_address_link_nothing():
     s = {(x.ctx.market_id, x.ctx.account_id): x for x in run(con)}
     assert con.execute("SELECT count(*) FROM funding_edges").fetchone()[0] == 0
     assert s[("slow", "insider")].ctx.cohort_funding_links == 0
+
+
+def test_dust_transfers_do_not_link():
+    from scoring.run import run
+    con = build_db()
+    run(con)
+    day = T - timedelta(hours=30)
+    fake = FakeRpc({w: [_tx("spammer", day, amount=0.0)] for w in ("insider", "peer0", "peer1")})
+    funding.run(con, fake, workers=1)
+    s = {(x.ctx.market_id, x.ctx.account_id): x for x in run(con)}
+    assert s[("slow", "insider")].ctx.cohort_funding_links == 0
+    from cases.bundle import build_bundle
+    pid = con.execute("SELECT position_id FROM position_scores WHERE account_id='insider'").fetchone()[0]
+    f = build_bundle(con, pid)["funding"]
+    assert f["incoming_transfers"][0]["sender_type"] == "dust (ignored)"
+    assert f["wallets_sharing_a_personal_funder"] == []
+
+
+def test_bundle_reports_links_between_cohort_peers():
+    from scoring.run import run
+    from cases.bundle import build_bundle
+    con = build_db()
+    run(con)
+    day = T - timedelta(hours=30)
+    funding.run(con, FakeRpc({"peer0": [_tx("boss", day)], "peer1": [_tx("boss", day)]}), workers=1)
+    run(con)
+    pid = con.execute("SELECT position_id FROM position_scores WHERE account_id='insider'").fetchone()[0]
+    pairs = build_bundle(con, pid)["funding"]["peer_pairs_sharing_a_personal_funder"]
+    assert pairs == [{"wallets": ["peer0", "peer1"], "via": "boss"}]
