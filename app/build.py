@@ -161,7 +161,7 @@ def alert_rows(d: dict) -> str:
         {bar(contrib)}
         <span class="q">{e(a.question)}<small>{e(a.category.replace('_', ' '))} · {e(short_account(a.account_id))} ·
           ${a.position_notional:,.0f} on '{e(a.outcome)}' at {a.avg_price:.2f}</small></span>
-        {badge}
+        <span class="badges">{badge}</span>
       </summary>
       <div class="body">
         <p class="expl">{e(a.explanation)}</p>
@@ -274,6 +274,7 @@ border-radius:14px;padding:3px 10px;cursor:pointer;font-size:13px}.filters butto
 .q{min-width:0;overflow-wrap:anywhere}.body{padding:4px 16px 16px;border-top:1px solid var(--line)}.expl{font-weight:500}
 .badge{font-size:12px;border-radius:10px;padding:1px 8px;border:1px solid currentColor}.badge.low{color:var(--low)}.badge.medium{color:var(--med)}
 .badge.high{color:var(--high)}.badge.warn{color:var(--high)}
+.badges{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;align-items:center}
 table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:500}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
 .sig td:first-child{white-space:nowrap}
@@ -286,7 +287,7 @@ font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-
 .newsflag{border-left:3px solid var(--med);padding:4px 10px;background:var(--panel)}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
 @media (max-width:640px){.alert summary{grid-template-columns:24px 40px 1fr;}.alert summary .bar{grid-column:2/4}.alert summary .q{grid-column:1/4}
-.alert summary .badge{grid-column:1/4;justify-self:start}.sig{min-width:560px}.body{padding:4px 10px 14px}}
+.alert summary .badges{grid-column:1/4;justify-self:start}.sig{min-width:560px}.body{padding:4px 10px 14px}}
 """
 
 JS = """
