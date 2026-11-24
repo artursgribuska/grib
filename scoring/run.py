@@ -21,7 +21,7 @@ import pandas as pd
 
 import config
 from scoring import features
-from scoring.features import build_features, candidate_buys
+from scoring.features import build_features, candidate_buys, long_shot_records
 from scoring.score import LABELS, ScoredPosition, score_position, short_account
 from signals.base import Buy, PositionContext
 
@@ -47,7 +47,9 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
     legs: dict[tuple, list[Buy]] = defaultdict(list)
     for r in buys.itertuples(index=False):
         legs[(r.venue, r.market_id, r.account_id)].append(
-            Buy(r.ts.to_pydatetime(), float(r.price), float(r.size), float(r.notional)))
+            Buy(r.ts.to_pydatetime(), float(r.price), float(r.size), float(r.notional),
+                later_price=_f(r.later_price), before_price=_f(r.before_price)))
+    records = {(r.venue, r.market_id, r.account_id): r for r in long_shot_records(con).itertuples(index=False)}
 
     out = []
     for r in pos.itertuples(index=False):
@@ -81,8 +83,16 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
             cohort_winner_peer_usd=float(_f(r.winner_peer_usd) or 0),
             cohort_funding_links=int(_f(r.linked_peers) or 0),
             funding_scan_status=r.scan_status if isinstance(r.scan_status, str) else None,
+            **_record(records.get((r.venue, r.market_id, r.account_id))),
         ))
     return out
+
+
+def _record(rec) -> dict:
+    if rec is None:
+        return {}
+    return {"other_long_shots": int(rec.n), "other_long_shot_wins": int(rec.wins),
+            "other_long_shot_expected_wins": float(rec.expected), "other_long_shot_variance": float(rec.variance)}
 
 
 def _f(x):
@@ -187,7 +197,8 @@ def print_top(scored: list[ScoredPosition], n: int) -> None:
     keys = list(LABELS)
     abbrev = {"pre_resolution_timing": "TIME", "low_probability_conviction": "LOWP",
               "fresh_single_purpose_wallet": "FRSH", "size_anomaly": "SIZE",
-              "category_prior": "CAT", "coordinated_entry": "COORD",
+              "category_prior": "CAT", "coordinated_entry": "COORD", "price_leadership": "LEAD",
+              "long_shot_track_record": "TRACK",
               "hedge_adjustment": "HDG", "exit_adjustment": "EXIT"}
     print(f"{'#':>2} {'score':>5}  " + " ".join(f"{abbrev[k]:>5}" for k in keys) + "  account      market")
     for i, sp in enumerate(scored[:n], 1):
@@ -195,7 +206,7 @@ def print_top(scored: list[ScoredPosition], n: int) -> None:
               + f"  {short_account(sp.ctx.account_id)}  {sp.ctx.question[:60]}")
         print(f"{'':>9}{sp.explanation}")
     print("\nColumns are points contributed by each signal: TIME pre-resolution timing, LOWP low-probability "
-          "conviction, FRSH fresh/single-purpose wallet, SIZE size anomaly, CAT category prior, COORD coordinated entry, "
+          "conviction, FRSH fresh/single-purpose wallet, SIZE size anomaly, CAT category prior, COORD coordinated entry, LEAD price leadership, TRACK long-shot track record, "
           "HDG hedge adjustment, EXIT sold before public.")
 
 

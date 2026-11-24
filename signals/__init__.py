@@ -4,8 +4,10 @@ from signals.category_prior import category_prior
 from signals.coordinated_entry import coordinated_entry
 from signals.fresh_wallet import fresh_single_purpose_wallet
 from signals.low_probability import low_probability_conviction
+from signals.price_leadership import price_leadership
 from signals.size_anomaly import size_anomaly
 from signals.timing import pre_resolution_timing
+from signals.track_record import long_shot_track_record
 
 ALL_SIGNALS = [
     pre_resolution_timing,
@@ -14,4 +16,6 @@ ALL_SIGNALS = [
     size_anomaly,
     category_prior,
     coordinated_entry,
+    price_leadership,
+    long_shot_track_record,
 ]

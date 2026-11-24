@@ -117,10 +117,14 @@ def test_category_prior():
 
 # ---- combined score -------------------------------------------------------------------
 def test_score_is_sum_of_contributions_and_traceable():
-    c = ctx([buy(6, 0.10, 20_000)], account_first_seen_at=CERT - timedelta(days=2),
+    b = buy(6, 0.10, 20_000)
+    b = Buy(b.ts, b.price, b.size, b.notional, later_price=0.80)
+    c = ctx([b], account_first_seen_at=CERT - timedelta(days=2),
             account_first_seen_source="venue_join_date", lifetime_markets=1, dataset_buy_notional=20_000,
             market_log_median=2.0, market_log_mad=0.5, market_percentile=0.999, market_n_positions=500,
-            cohort_winner_peers=10, cohort_loser_peers=0)
+            cohort_winner_peers=10, cohort_loser_peers=0,
+            other_long_shots=5, other_long_shot_wins=4, other_long_shot_expected_wins=1.0,
+            other_long_shot_variance=0.8)
     sp = score_position(c)
     assert abs(sum(WEIGHTS.values()) - 1) < 1e-9
     assert sp.score == pytest.approx(sum(sp.contributions.values()), abs=0.11)
@@ -192,3 +196,33 @@ def test_risk_band_rules():
     assert risk_band(45, strong3, 0.0)[0] == "Low"                      # below review line
     profile_only = {"fresh_single_purpose_wallet": 1.0, "size_anomaly": 1.0, "category_prior": 1.0}
     assert risk_band(80, profile_only, 0.0)[0] == "Low"
+
+
+# ---- signal 5: price leadership ------------------------------------------------------
+def _leg(hours, price, later, notional=5_000):
+    b = buy(hours, price, notional)
+    return Buy(b.ts, b.price, b.size, b.notional, later_price=later)
+
+
+def test_price_leadership_rewards_buys_the_market_then_followed():
+    from signals.price_leadership import price_leadership
+    led = price_leadership(ctx([_leg(30, 0.50, 0.85)]))          # mid-price buy, market followed
+    flat = price_leadership(ctx([_leg(30, 0.50, 0.50)]))
+    fell = price_leadership(ctx([_leg(30, 0.50, 0.30)]))
+    assert led.score > 0.9 and flat.score == 0 and fell.score == 0
+    assert "rose to 0.85" in led.reason
+    assert price_leadership(ctx([buy(30, 0.5, 5_000)])).score == 0    # no later price known
+
+
+# ---- signal 6: long-shot track record ------------------------------------------------
+@pytest.mark.parametrize("n,w,exp,var,lo,hi", [
+    (0, 0, 0, 0, 0, 0),                 # no record
+    (5, 1, 1.0, 0.8, 0, 0),             # one lucky win
+    (5, 3, 1.0, 0.8, 0.5, 0.75),        # 3 from 5 at ~0.20
+    (20, 5, 4.0, 3.2, 0, 0),            # about what prices implied
+])
+def test_track_record_is_calibrated_by_prices_paid(n, w, exp, var, lo, hi):
+    from signals.track_record import long_shot_track_record
+    r = long_shot_track_record(ctx([buy(6, 0.1, 1_000)], other_long_shots=n, other_long_shot_wins=w,
+                                   other_long_shot_expected_wins=exp, other_long_shot_variance=var))
+    assert lo <= r.score <= hi

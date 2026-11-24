@@ -48,6 +48,10 @@ COHORT_MAX_PRICE = 0.50      # peers must have bought the side the market though
 LOW_HISTORY_MAX_MARKETS = 5  # "low-history" account: traded at most this many markets ...
 LOW_HISTORY_MAX_AGE_DAYS = 14  # ... or joined the venue at most this many days before buying
 
+# long-shot track record (signal 6)
+TRACK_MAX_PRICE = 0.35       # a "long shot": bought at an average price below this
+TRACK_MIN_USD = 250          # ... with at least this much money
+
 # wallet funding (optional tables from ingest/funding.py)
 FUNDING_HUB_MIN_WALLETS = 8  # a sender funding this many scanned wallets is treated as infrastructure
 FUNDING_MIN_USD = 50         # smaller transfers are dust / address-poisoning spam, not funding
@@ -236,12 +240,43 @@ def candidate_accounts(con: duckdb.DuckDBPyConnection) -> list[str]:
         "SELECT DISTINCT account_id FROM candidate_positions ORDER BY 1").fetchall()]
 
 
+LEAD_HORIZON_H = 24        # price leadership: where was the winner's price this long after the buy?
+LEAD_MARGIN_MIN = 5        # ... but never later than this many minutes before public certainty
+
+
 def candidate_buys(con: duckdb.DuckDBPyConnection):
-    """Individual buy legs behind each candidate position (for the timing / price signals)."""
-    return con.execute("""
-        SELECT w.venue, w.market_id, w.account_id, w.ts, w.price, w.size, w.notional
-        FROM trades_w w
-        JOIN candidate_positions c USING (venue, market_id, account_id, outcome)
-        JOIN market_state s USING (venue, market_id)
-        WHERE w.side = 'buy' AND w.ts < s.certainty_at
-        ORDER BY w.venue, w.market_id, w.account_id, w.ts""").df()
+    """Individual buy legs behind each candidate position (for the timing / price signals),
+    with the winner's market price LEAD_HORIZON_H later (capped just before certainty) and
+    just before the buy — the inputs of the price-leadership signal."""
+    return con.execute(f"""
+        WITH b AS (
+            SELECT w.venue, w.market_id, w.account_id, w.ts, w.price, w.size, w.notional,
+                   least(w.ts + INTERVAL {LEAD_HORIZON_H} HOUR,
+                         s.certainty_at - INTERVAL {LEAD_MARGIN_MIN} MINUTE) AS later_ts
+            FROM trades_w w
+            JOIN candidate_positions c USING (venue, market_id, account_id, outcome)
+            JOIN market_state s USING (venue, market_id)
+            WHERE w.side = 'buy' AND w.ts < s.certainty_at),
+        px AS (SELECT venue, market_id, ts, winner_price FROM trades_w WHERE notional >= 5)
+        SELECT b.*, l.winner_price AS later_price, p.winner_price AS before_price
+        FROM b
+        ASOF LEFT JOIN px l ON l.venue = b.venue AND l.market_id = b.market_id AND l.ts <= b.later_ts
+        ASOF LEFT JOIN px p ON p.venue = b.venue AND p.market_id = b.market_id AND p.ts < b.ts
+        ORDER BY b.venue, b.market_id, b.account_id, b.ts""").df()
+
+
+def long_shot_records(con: duckdb.DuckDBPyConnection):
+    """Per candidate position: the same account's long-shot bets in OTHER markets of the
+    dataset (position avg price < TRACK_MAX_PRICE, ≥ TRACK_MIN_USD), with how many won and
+    how many the prices paid implied would win (Σ price) — inputs of the track-record signal."""
+    return con.execute(f"""
+        WITH ls AS (
+            SELECT venue, market_id, account_id, is_winner, buy_notional / buy_size AS px
+            FROM positions_all
+            WHERE buy_notional >= {TRACK_MIN_USD} AND buy_notional / nullif(buy_size, 0) < {TRACK_MAX_PRICE})
+        SELECT c.venue, c.market_id, c.account_id,
+               count(ls.market_id) AS n, count(ls.market_id) FILTER (WHERE ls.is_winner) AS wins,
+               coalesce(sum(ls.px), 0) AS expected, coalesce(sum(ls.px * (1 - ls.px)), 0) AS variance
+        FROM candidate_positions c
+        LEFT JOIN ls ON ls.venue = c.venue AND ls.account_id = c.account_id AND ls.market_id <> c.market_id
+        GROUP BY 1, 2, 3""").df()

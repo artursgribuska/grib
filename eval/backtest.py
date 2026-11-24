@@ -133,13 +133,53 @@ def summarise(res: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+# Weights before signals 5 (price leadership) and 6 (track record) were added — the
+# baseline `--compare` scores the same planted trades against.
+BASELINE_WEIGHTS = {
+    "pre_resolution_timing": 0.22, "low_probability_conviction": 0.22, "fresh_single_purpose_wallet": 0.18,
+    "size_anomaly": 0.13, "category_prior": 0.12, "coordinated_entry": 0.13,
+    "price_leadership": 0.0, "long_shot_track_record": 0.0,
+}
+
+
+def headline(res: pd.DataFrame) -> dict:
+    """Informed vs controls in information-sensitive categories (the numbers that matter)."""
+    r = res[~res.category.isin(["sports", "crypto_price"])].dropna(subset=["score"])
+    out = {}
+    for kind, g in r.groupby("kind"):
+        out[kind] = {"n": len(g), "top1pct": (g.top_pct <= 0.01).mean(), "at_threshold": (g.score >= ALERT_THRESHOLD).mean(),
+                     "median_score": g.score.median()}
+    return out
+
+
+def compare(con, planted) -> str:
+    from scoring import score as sc
+    cur = dict(sc.WEIGHTS)
+    try:
+        sc.WEIGHTS.clear(); sc.WEIGHTS.update(BASELINE_WEIGHTS)
+        base = headline(evaluate(con, planted))
+    finally:
+        sc.WEIGHTS.clear(); sc.WEIGHTS.update(cur)
+    now = headline(evaluate(con, planted))
+    lines = [f"{'kind':<9} {'':>9} {'top 1%':>8} {'≥thr':>6} {'median':>7}"]
+    for kind in sorted(now):
+        for label, h in (("baseline", base.get(kind)), ("current", now[kind])):
+            if h:
+                lines.append(f"{kind:<9} {label:>9} {h['top1pct']:>8.0%} {h['at_threshold']:>6.0%} {h['median_score']:>7.1f}")
+    return "\n".join(lines)
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--markets", type=int, default=60)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--compare", action="store_true", help="also score the same plants with the baseline weights")
     args = ap.parse_args(argv)
     con = load_copy()
     planted = plant(con, args.markets, args.seed)
+    if args.compare:
+        print(compare(con, planted))
+        return
     res = evaluate(con, planted)
     out = config.OUTPUT_DIR / "backtest.csv"
     res.to_csv(out, index=False)

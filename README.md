@@ -91,12 +91,14 @@ Score (0–100) = sum of points from each signal; every point is stored against 
 
 | Signal | Max pts | What it measures |
 |---|---|---|
-| Pre-resolution timing | 22 | How much *later than the market's own money* the position was bought, at a low price. A market that trades almost entirely in its final hours (sports, 5-minute crypto) gives no timing signal |
-| Low-probability conviction | 22 | Size of bets below 0.30 implied probability, relative to market volume (log(1/price) "surprise") |
-| Fresh / single-purpose account | 18 | New account, few markets ever traded, most of its money in this market |
-| Size anomaly | 13 | Position size vs. this market (robust z-score) and vs. the account's own history |
-| Category prior | 12 | How likely a small group knows the answer early (personnel, corporate, government ≫ sports, prices) |
-| Coordinated entry | 13 | Other low-history accounts buying the same long shot within ±24 h, compared against the same flow on the losing side |
+| Pre-resolution timing | 19 | How much *later than the market's own money* the position was bought, at a low price. A market that trades almost entirely in its final hours (sports, 5-minute crypto) gives no timing signal |
+| Low-probability conviction | 19 | Size of bets below 0.30 implied probability, relative to market volume (log(1/price) "surprise") |
+| Fresh / single-purpose account | 15 | New account, few markets ever traded, most of its money in this market |
+| Size anomaly | 11 | Position size vs. this market (robust z-score) and vs. the account's own history |
+| Category prior | 10 | How likely a small group knows the answer early (personnel, corporate, government ≫ sports, prices) |
+| Coordinated entry | 11 | Other low-history accounts buying the same long shot within ±24 h, compared against the same flow on the losing side; shared funding where scanned |
+| Price leadership | 9 | Did the market move toward the winner *after* the account bought, before the outcome was public? Works at any entry price |
+| Long-shot track record | 6 | Long shots won in other markets vs. the number the prices paid implied (Σ price) |
 | Hedge adjustment | −20 | Deducted if the same account also bought the losing side |
 | Exit adjustment | −30 | Deducted in proportion to the shares sold back *before* the outcome became public |
 

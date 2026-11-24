@@ -26,10 +26,11 @@ from scoring.score import ALERT_THRESHOLD, LABELS, short_account
 
 OUT = config.OUTPUT_DIR / "dashboard" / "index.html"
 SIGNAL_ORDER = ["pre_resolution_timing", "low_probability_conviction", "fresh_single_purpose_wallet",
-                "size_anomaly", "category_prior", "coordinated_entry"]
+                "size_anomaly", "category_prior", "coordinated_entry", "price_leadership", "long_shot_track_record"]
 COLORS = {"pre_resolution_timing": "var(--c1)", "low_probability_conviction": "var(--c2)",
           "fresh_single_purpose_wallet": "var(--c3)", "size_anomaly": "var(--c4)",
-          "category_prior": "var(--c5)", "coordinated_entry": "var(--c6)"}
+          "category_prior": "var(--c5)", "coordinated_entry": "var(--c6)",
+          "price_leadership": "var(--c7)", "long_shot_track_record": "var(--c8)"}
 
 e = lambda x: html.escape(str(x), quote=True)
 
@@ -232,11 +233,11 @@ def backtest_html(bt: pd.DataFrame | None) -> str:
 
 CSS = """
 :root{--bg:#f7f7f5;--panel:#fff;--ink:#1d1d1b;--muted:#6b6b66;--line:#e3e2dc;--accent:#2f5d8a;
---c1:#2f6db3;--c2:#c2571a;--c3:#2e8b57;--c4:#8a5cb8;--c5:#9a8a3a;--c6:#c23b6b;--adj:#b9b9b2;
+--c1:#2f6db3;--c2:#c2571a;--c3:#2e8b57;--c4:#8a5cb8;--c5:#9a8a3a;--c6:#c23b6b;--c7:#1f8a8a;--c8:#6b6b2f;--adj:#b9b9b2;
 --low:#2e8b57;--med:#b7791f;--high:#c0392b}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141413;--panel:#1e1e1c;--ink:#ecebe6;
 --muted:#9c9b95;--line:#33332f;--accent:#7fb0e0;--c1:#5b9be0;--c2:#e8844a;--c3:#5cbf86;--c4:#b28ce0;--c5:#cdbb62;
---c6:#e86b98;--adj:#55554f}}
+--c6:#e86b98;--c7:#4fc4c4;--c8:#b5b56a;--adj:#55554f}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
 main{max-width:1100px;margin:0 auto;padding:24px 16px 64px}h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:32px 0 8px}
 h4{margin:18px 0 6px}h5{margin:12px 0 4px;font-size:14px}.muted{color:var(--muted)}small{display:block;color:var(--muted);font-size:12.5px}

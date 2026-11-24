@@ -18,12 +18,14 @@ from signals import ALL_SIGNALS
 from signals.base import PositionContext, SignalResult, money
 
 WEIGHTS = {
-    "pre_resolution_timing": 0.22,
-    "low_probability_conviction": 0.22,
-    "fresh_single_purpose_wallet": 0.18,
-    "size_anomaly": 0.13,
-    "category_prior": 0.12,
-    "coordinated_entry": 0.13,
+    "pre_resolution_timing": 0.19,
+    "low_probability_conviction": 0.19,
+    "fresh_single_purpose_wallet": 0.15,
+    "size_anomaly": 0.11,
+    "category_prior": 0.10,
+    "coordinated_entry": 0.11,
+    "price_leadership": 0.09,
+    "long_shot_track_record": 0.06,
 }
 HEDGE_MAX_PENALTY = 20.0
 EXIT_MAX_PENALTY = 30.0    # a position sold out before the answer was public did not profit from it
@@ -36,12 +38,15 @@ LABELS = {
     "size_anomaly": "Size anomaly",
     "category_prior": "Category prior",
     "coordinated_entry": "Coordinated entry",
+    "price_leadership": "Price leadership",
+    "long_shot_track_record": "Long-shot track record",
     "hedge_adjustment": "Hedge adjustment",
     "exit_adjustment": "Exit adjustment",
 }
 ADJUSTMENTS = ("hedge_adjustment", "exit_adjustment")
 # behavioural signals describe the trading itself; the rest describe the account/market
-BEHAVIOURAL = ("pre_resolution_timing", "low_probability_conviction", "coordinated_entry")
+BEHAVIOURAL = ("pre_resolution_timing", "low_probability_conviction", "coordinated_entry", "price_leadership",
+               "long_shot_track_record")
 STRONG_AT, SUPPORTING_AT = 0.70, 0.40
 
 
@@ -125,7 +130,8 @@ def _base_band(total: float, scores: dict[str, float], exited_ratio: float) -> t
     if exited_ratio >= 0.5:
         return "Low", "most of the position was sold before the outcome became public"
     if not any_beh:
-        return "Low", "no behavioural signal (timing, low-probability conviction, coordinated entry) is at least supporting"
+        return "Low", ("no behavioural signal (timing, low-probability conviction, coordinated entry, price leadership, "
+                       "track record) is at least supporting")
     if total < ALERT_THRESHOLD:
         return "Low", f"engine score below the review threshold of {ALERT_THRESHOLD:.0f}"
     if total >= 65 and len(st["strong"]) >= 3 and strong_beh:

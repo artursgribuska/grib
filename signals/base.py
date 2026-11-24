@@ -16,6 +16,8 @@ class Buy:
     price: float     # implied probability paid (0..1)
     size: float      # shares / units
     notional: float  # price * size
+    later_price: float | None = None   # winner's market price ~24 h later, capped just before public certainty
+    before_price: float | None = None  # winner's market price just before this buy
 
 
 @dataclass
@@ -55,6 +57,11 @@ class PositionContext:
     cohort_winner_peer_usd: float = 0.0
     cohort_funding_links: int = 0                # cohort peers sharing a personal funder with this wallet
     funding_scan_status: str | None = None       # None = never scanned; 'ok'; 'archive_unavailable'; ...
+    # long-shot bets by this account in OTHER markets of the dataset
+    other_long_shots: int = 0
+    other_long_shot_wins: int = 0
+    other_long_shot_expected_wins: float = 0.0   # Σ price paid = wins the market expected
+    other_long_shot_variance: float = 0.0        # Σ p(1 − p)
 
     @property
     def buy_notional(self) -> float:
