@@ -33,14 +33,16 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
                a.first_seen_at, a.metadata_json,
                h.dataset_markets, h.dataset_buy_notional, h.per_market,
                mt.avg_lateness, mt.share_within_72h, mt.lifetime_hours,
-               ec.winner_peers, ec.loser_peers, ec.winner_peer_usd
+               ec.winner_peers, ec.loser_peers, ec.winner_peer_usd,
+               cf.linked_peers, cf.scan_status
         FROM candidate_positions c
         JOIN market_state s USING (venue, market_id)
         LEFT JOIN market_size_dist d USING (venue, market_id)
         LEFT JOIN accounts a USING (venue, account_id)
         LEFT JOIN account_history h USING (venue, account_id)
         LEFT JOIN market_timing mt USING (venue, market_id)
-        LEFT JOIN entry_cohorts ec USING (venue, market_id, account_id)""").df()
+        LEFT JOIN entry_cohorts ec USING (venue, market_id, account_id)
+        LEFT JOIN cohort_funding cf USING (venue, market_id, account_id)""").df()
     buys = candidate_buys(con)
     legs: dict[tuple, list[Buy]] = defaultdict(list)
     for r in buys.itertuples(index=False):
@@ -77,6 +79,8 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
             cohort_winner_peers=int(_f(r.winner_peers) or 0),
             cohort_loser_peers=int(_f(r.loser_peers) or 0),
             cohort_winner_peer_usd=float(_f(r.winner_peer_usd) or 0),
+            cohort_funding_links=int(_f(r.linked_peers) or 0),
+            funding_scan_status=r.scan_status if isinstance(r.scan_status, str) else None,
         ))
     return out
 
@@ -145,6 +149,16 @@ def build_rollups(con: duckdb.DuckDBPyConnection) -> None:
     FROM position_scores WHERE score >= {ROLLUP_MIN_SCORE}
     GROUP BY 1 HAVING count(*) >= 2
     ORDER BY alerts DESC, max_score DESC;
+
+    -- personal (non-infrastructure) senders that funded two or more scanned wallets
+    CREATE OR REPLACE TABLE funding_clusters AS
+    SELECT f.sender, f.wallets_funded, f.wallets,
+           (SELECT count(DISTINCT ps.account_id) FROM position_scores ps
+             WHERE list_contains(f.wallets, ps.account_id) AND ps.score >= {ROLLUP_MIN_SCORE}) AS flagged_wallets,
+           (SELECT list(DISTINCT ps.question) FROM position_scores ps
+             WHERE list_contains(f.wallets, ps.account_id) AND ps.score >= {ROLLUP_MIN_SCORE}) AS flagged_markets
+    FROM funding_senders f WHERE NOT f.infrastructure AND f.wallets_funded >= 2
+    ORDER BY flagged_wallets DESC, wallets_funded DESC;
     """)
 
 
@@ -181,6 +195,16 @@ def print_rollups(con: duckdb.DuckDBPyConnection, n: int = 10) -> None:
     for r in ev.itertuples():
         print(f"  {r.wallets:>3} wallets ({r.low_history_wallets} low-history) across {r.markets} market(s), "
               f"${r.total_usd:,.0f}, max score {r.max_score:.1f}  {r.event_key[:70]}")
+    fc = con.execute("SELECT * FROM funding_clusters LIMIT ?", [n]).df()
+    scanned = con.execute("SELECT count(*), count(*) FILTER (WHERE status = 'ok') FROM wallet_funding_scans").fetchone()
+    print(f"\nSHARED FUNDING (personal addresses that funded 2+ of {scanned[1]} scanned wallets; "
+          f"{scanned[0] - scanned[1]} could not be scanned)")
+    if fc.empty:
+        print("  none" if scanned[0] else "  funding not scanned — run `uv run python -m ingest.funding`")
+    for r in fc.itertuples():
+        mk = "; ".join(q[:40] for q in list(r.flagged_markets or [])[:3])
+        print(f"  sender {short_account(r.sender)} funded {r.wallets_funded} wallets "
+              f"({r.flagged_wallets} flagged)  {mk}")
     wl = con.execute("SELECT * FROM alert_wallets LIMIT ?", [n]).df()
     print(f"\nWALLETS FLAGGED IN SEVERAL MARKETS (alerts scoring ≥ {ROLLUP_MIN_SCORE:.0f})")
     if wl.empty:

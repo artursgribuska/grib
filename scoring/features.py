@@ -48,6 +48,9 @@ COHORT_MAX_PRICE = 0.50      # peers must have bought the side the market though
 LOW_HISTORY_MAX_MARKETS = 5  # "low-history" account: traded at most this many markets ...
 LOW_HISTORY_MAX_AGE_DAYS = 14  # ... or joined the venue at most this many days before buying
 
+# wallet funding (optional tables from ingest/funding.py)
+FUNDING_HUB_MIN_WALLETS = 8  # a sender funding this many scanned wallets is treated as infrastructure
+
 
 def build_features(con: duckdb.DuckDBPyConnection) -> None:
     con.execute(f"""
@@ -152,6 +155,50 @@ def build_features(con: duckdb.DuckDBPyConnection) -> None:
     GROUP BY 1, 2, 3;
     """)
     build_market_timing(con)
+    build_funding_links(con)
+
+
+FUNDING_TABLES = ("wallet_funding_scans", "wallet_funding_transfers", "wallet_funding_senders")
+
+
+def build_funding_links(con: duckdb.DuckDBPyConnection) -> None:
+    """Who shares a funder with whom (from ingest/funding.py; empty tables if it never ran).
+
+    funding_senders  each sender with how many scanned wallets it funded and whether it is
+                     infrastructure (a contract, or funding ≥ FUNDING_HUB_MIN_WALLETS wallets —
+                     bridges, exchanges, on-ramps), which links nothing
+    funding_edges    pairs of wallets funded by the same personal sender, or one funding the other
+    cohort_funding   per candidate position: how many of its entry-cohort peers are linked to it
+    """
+    from ingest.funding import DDL as FUNDING_DDL
+    con.execute(FUNDING_DDL)
+    con.execute(f"""
+    CREATE OR REPLACE TABLE funding_senders AS
+    WITH t AS (SELECT DISTINCT account_id, sender FROM wallet_funding_transfers)
+    SELECT t.sender, count(*) AS wallets_funded, coalesce(any_value(s.is_contract), false) AS is_contract,
+           coalesce(any_value(s.is_contract), false) OR count(*) >= {FUNDING_HUB_MIN_WALLETS} AS infrastructure,
+           list(t.account_id ORDER BY t.account_id) AS wallets
+    FROM t LEFT JOIN wallet_funding_senders s USING (sender)
+    GROUP BY 1;
+
+    CREATE OR REPLACE TABLE funding_edges AS
+    WITH t AS (SELECT DISTINCT w.account_id, w.sender FROM wallet_funding_transfers w
+               JOIN funding_senders f USING (sender) WHERE NOT f.infrastructure)
+    SELECT a.account_id AS a, b.account_id AS b, 'shared_sender' AS kind, a.sender AS via
+    FROM t a JOIN t b ON a.sender = b.sender AND a.account_id <> b.account_id
+    UNION   -- one trading wallet funded another directly
+    SELECT account_id, sender, 'direct', sender FROM t WHERE sender IN (SELECT account_id FROM account_profile)
+    UNION
+    SELECT sender, account_id, 'direct', sender FROM t WHERE sender IN (SELECT account_id FROM account_profile);
+
+    CREATE OR REPLACE TABLE cohort_funding AS
+    SELECT ec.venue, ec.market_id, ec.account_id,
+           count(DISTINCT e.b) AS linked_peers,
+           (SELECT status FROM wallet_funding_scans s WHERE s.account_id = ec.account_id) AS scan_status
+    FROM entry_cohorts ec
+    LEFT JOIN funding_edges e ON e.a = ec.account_id AND list_contains(ec.winner_peer_ids, e.b)
+    GROUP BY 1, 2, 3;
+    """)
 
 
 def build_market_timing(con: duckdb.DuckDBPyConnection) -> None:

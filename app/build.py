@@ -50,10 +50,14 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
                                    (SELECT count(*) FROM position_scores WHERE score >= {ALERT_THRESHOLD})""").fetchone()
     events = con.execute("SELECT * FROM alert_events WHERE wallets >= 2 LIMIT 15").df() if "alert_events" in t else pd.DataFrame()
     wallets = con.execute("SELECT * FROM alert_wallets LIMIT 15").df() if "alert_wallets" in t else pd.DataFrame()
+    funding = (con.execute("SELECT * FROM funding_clusters LIMIT 15").df() if "funding_clusters" in t else pd.DataFrame())
+    scans = (dict(con.execute("SELECT status, count(*) FROM wallet_funding_scans GROUP BY 1").fetchall())
+             if "wallet_funding_scans" in t else {})
     bt_path = config.DATA_DIR / "backtest.csv"
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
     return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
-                stats=stats, events=events, wallets=wallets, backtest=backtest)
+                stats=stats, events=events, wallets=wallets, backtest=backtest,
+                funding=funding, scans=scans)
 
 
 def bar(contrib: dict) -> str:
@@ -129,7 +133,22 @@ def rollups(d: dict) -> str:
                       f"<td class=num>${r.total_usd:,.0f}</td><td class=num>{r.max_score:.1f}</td>"
                       f"<td>{e('; '.join(list(r.questions)[:3]))}</td></tr>"
                       for r in wl.itertuples()) or "<tr><td colspan=5 class=muted>None</td></tr>"
-    return f"""
+    fc, scans = d["funding"], d["scans"]
+    n_ok = scans.get("ok", 0)
+    n_other = sum(v for k, v in scans.items() if k != "ok")
+    fc_rows = "".join(f"<tr><td>{e(short_account(r.sender))}</td><td class=num>{r.wallets_funded}</td>"
+                      f"<td class=num>{r.flagged_wallets}</td>"
+                      f"<td>{e('; '.join(list(r.flagged_markets if r.flagged_markets is not None else [])[:3]))}</td></tr>"
+                      for r in fc.itertuples()) if len(fc) else ""
+    fc_note = (f"{n_ok} wallets scanned; {n_other} could not be (history too old for the public node)." if scans
+               else "Funding not scanned — run <code>uv run python -m ingest.funding</code>.")
+    funding_html = f"""
+  <section><h2>Shared funding</h2>
+    <p class="muted">Personal addresses (not contracts, bridges or exchanges) that sent USDC to two or more flagged
+      or entry-cohort wallets when they started trading. {fc_note}</p>
+    <div class="scroll"><table><thead><tr><th>Sender</th><th>Wallets funded</th><th>Flagged</th><th>Flagged markets</th></tr></thead>
+    <tbody>{fc_rows or '<tr><td colspan=4 class=muted>None found</td></tr>'}</tbody></table></div></section>"""
+    return funding_html + f"""
   <section><h2>Events with several flagged wallets</h2>
     <p class="muted">Alerts scoring ≥ {ROLLUP_MIN_SCORE:.0f}, grouped by event (related markets on the same story).</p>
     <div class="scroll"><table><thead><tr><th>Event</th><th>Wallets</th><th>Low-history</th><th>Markets</th><th>Total</th><th>Max score</th></tr></thead>

@@ -31,8 +31,11 @@ DATA_LIMITATIONS = [
     "The wallet is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
     "Account history covers the sample of markets loaded for this demo, plus the venue's public profile statistics.",
     "Only trades executed on this venue are visible; positions held elsewhere are unknown.",
-    "No wallet-funding or transfer data is loaded: accounts that entered together cannot be shown to be linked.",
 ]
+NO_FUNDING = ("No wallet-funding data was available for this account: accounts that entered together cannot be "
+              "shown to be linked.")
+FUNDING_SCOPE = ("Funding covers only USDC transfers into the wallet on Polygon around when it started trading; "
+                 "deposits through exchanges, bridges or card on-ramps come from shared addresses and link nothing.")
 
 RATING_RULES = [
     "Low if at least half of the position was sold before the outcome became public.",
@@ -97,6 +100,7 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
     sig_scores = dict(zip(sigs.signal, sigs.score.astype(float)))
     strength = signal_strength(sig_scores)
     band, band_rule = risk_band(float(p.score), sig_scores, float(p.exited_ratio))
+    funding = funding_context(con, acct)
 
     bundle = {
         "case_id": case_id(position_id),
@@ -176,7 +180,8 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
         "market_price_path": price_path(con, venue, mid, p.first_buy_ts.to_pydatetime(), resolved),
         "market_context": market_context(con, venue, mid, acct, certainty),
         "event_context": event_context(con, mid, acct, position_id),
-        "data_limitations": DATA_LIMITATIONS,
+        "funding": funding,
+        "data_limitations": DATA_LIMITATIONS + [FUNDING_SCOPE if funding["status"] == "ok" else NO_FUNDING],
     }
     return bundle
 
@@ -206,6 +211,45 @@ def event_context(con, mid: str, acct: str, position_id: str) -> dict:
                                "cost_usd": _num(n, 0), "first_buy_at": _ts(t)} for a, q, sc, n, t in others],
         "note": f"positions by other accounts on related markets scoring at least {ROLLUP_MIN_SCORE:.0f}",
     }
+
+
+def funding_context(con, acct: str) -> dict:
+    """Where this wallet's first USDC came from, and which other scanned wallets share that sender."""
+    tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
+    if "funding_senders" not in tables:
+        return {"status": "not scanned"}
+    scan = con.execute("SELECT status, from_ts, to_ts FROM wallet_funding_scans WHERE account_id = ?", [acct]).fetchall()
+    if not scan:
+        return {"status": "not scanned"}
+    status, f0, f1 = scan[0]
+    out = {"status": status, "window_from": _ts(f0), "window_to": _ts(f1)}
+    if status != "ok":
+        return out
+    rows = con.execute("""
+        SELECT t.ts, t.amount, t.token, t.sender, f.is_contract, f.infrastructure, f.wallets_funded, f.wallets
+        FROM wallet_funding_transfers t JOIN funding_senders f USING (sender)
+        WHERE t.account_id = ? ORDER BY t.ts LIMIT 10""", [acct]).fetchall()
+    out["incoming_transfers"] = [{
+        "time": _ts(ts), "amount_usd": _num(amt, 0), "token": tok, "sender": short_account(snd),
+        "sender_type": "contract" if is_c else ("shared infrastructure" if infra else "personal address"),
+    } for ts, amt, tok, snd, is_c, infra, _, _ in rows]
+    linked = {}
+    for *_, snd, is_c, infra, n, wallets in rows:
+        if infra:
+            continue
+        for w in wallets:
+            if w != acct:
+                linked.setdefault(w, short_account(snd))
+    direct = con.execute("SELECT DISTINCT b FROM funding_edges WHERE a = ? AND kind = 'direct'", [acct]).fetchall()
+    for (w,) in direct:
+        linked.setdefault(w, "direct transfer")
+    flagged = dict(con.execute(f"""SELECT account_id, max(score) FROM position_scores
+                                    WHERE account_id IN (SELECT unnest(?)) GROUP BY 1""", [list(linked)]).fetchall()) if linked else {}
+    out["wallets_sharing_a_personal_funder"] = [
+        {"display_id": short_account(w), "via": via, "highest_alert_score": _num(flagged.get(w), 1)}
+        for w, via in list(linked.items())[:8]]
+    out["no_incoming_usdc_found"] = not rows
+    return out
 
 
 def account_trades(con, venue, mid, acct, certainty: datetime) -> list[dict]:

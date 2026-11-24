@@ -15,11 +15,12 @@ a case file. This demo runs on **public Polymarket data only**.
 3. `uv run python -m ingest.run` — downloads ~200 recently resolved markets and all their trades into `data/integrity.duckdb` (≈20 min first time; cached afterwards)
 4. `uv run python -m ingest.enrich` — fetches public wallet facts (join date, lifetime markets) for candidate wallets (≈12 min first time)
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
-6. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
-7. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
-8. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
-9. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
-10. `uv run pytest` — run the tests
+6. `uv run python -m ingest.funding`, then `uv run python -m scoring.run` again — optional: scans on-chain USDC deposits into flagged wallets and their entry-cohort peers (Polygon public RPC, no key; ≈10 min) so scoring can see shared funders
+7. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
+8. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
+9. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
+10. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
+11. `uv run pytest` — run the tests
 
 ## Case files
 
@@ -56,6 +57,16 @@ Score (0–100) = sum of points from each signal; every point is stored against 
 | Coordinated entry | 13 | Other low-history accounts buying the same long shot within ±24 h, compared against the same flow on the losing side |
 | Hedge adjustment | −20 | Deducted if the same account also bought the losing side |
 | Exit adjustment | −30 | Deducted in proportion to the shares sold back *before* the outcome became public |
+
+**Wallet funding** (`ingest/funding.py`, optional). Polymarket accounts are proxy wallets
+on Polygon. For flagged wallets and the low-history wallets that entered alongside them,
+we scan USDC transfers *into* the wallet around when it started trading. Two wallets funded
+by the same personal address, or one funding the other, count as a funding link; a
+coordinated-entry score of at least 0.70 follows from one linked peer, 1.0 from two.
+Senders that are contracts or fund 8+ scanned wallets are treated as infrastructure
+(bridges, exchanges, on-ramps) and link nothing. Public RPC nodes only serve recent
+history without a key; older wallets are marked `archive_unavailable` (point
+`POLYGON_RPC_URL` at an archive node to cover them).
 
 `scoring.run` also rolls alerts up **by event** (related markets on the same story, e.g.
 several "…by date?" variants) and **by wallet** (accounts flagged in several markets),

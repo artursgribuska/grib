@@ -53,6 +53,8 @@ class PositionContext:
     cohort_winner_peers: int = 0
     cohort_loser_peers: int = 0
     cohort_winner_peer_usd: float = 0.0
+    cohort_funding_links: int = 0                # cohort peers sharing a personal funder with this wallet
+    funding_scan_status: str | None = None       # None = never scanned; 'ok'; 'archive_unavailable'; ...
 
     @property
     def buy_notional(self) -> float:
