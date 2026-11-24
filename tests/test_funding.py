@@ -8,6 +8,20 @@ from ingest import funding
 from tests.test_features import T, build_db
 
 
+@pytest.fixture(autouse=True)
+def any_account_id(monkeypatch):
+    """The synthetic venue uses readable account IDs, not 0x wallet addresses."""
+    monkeypatch.setattr(funding, "WALLET_PATTERN", ".*")
+
+
+def test_operator_ids_are_not_scanned(monkeypatch):
+    from scoring.run import run
+    monkeypatch.setattr(funding, "WALLET_PATTERN", "0x[0-9a-f]{40}")
+    con = build_db()
+    run(con)
+    assert funding.targets(con).empty
+
+
 def test_window_uses_join_date_and_caps_length():
     ft = datetime(2026, 11, 20)
     s, e = funding.window(ft, datetime(2026, 11, 18), "venue_join_date")
@@ -57,7 +71,11 @@ def funded():
         "peer0": [_tx("boss", day)], "peer1": [_tx("boss", day)],
         "peer2": [_tx("bridge", day)], "peer3": [_tx("bridge", day)],
     }, archive={"flipper"})
-    res = funding.run(con, fake, workers=1)
+    old, funding.WALLET_PATTERN = funding.WALLET_PATTERN, ".*"   # module-scoped: runs before the autouse patch
+    try:
+        res = funding.run(con, fake, workers=1)
+    finally:
+        funding.WALLET_PATTERN = old
     scored = {(s.ctx.market_id, s.ctx.account_id): s for s in run(con)}
     return con, res, scored
 

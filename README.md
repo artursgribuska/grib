@@ -27,6 +27,23 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 10. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
 11. `uv run pytest` — run the tests
 
+## Your own data (operators)
+
+An operator can run the same engine on its own bet export (milestone 5). Prepare up to three
+CSVs — markets, bets (decimal odds + stake, or price + size) and optionally accounts (opening
+date) — then load them into a **separate** database and run the pipeline on it:
+
+    uv run python -m ingest.csv_loader --venue mybook --markets markets.csv --trades bets.csv --accounts accounts.csv
+    GRIB_DB_PATH=data/mybook.duckdb uv run python -m pipeline --skip-ingest --no-funding
+
+(set `GRIB_DB_PATH` for the loader too). Outputs then go to `data/mybook/` so they never mix
+with the public demo. Column definitions are in `ingest/csv_loader.py`; rows that fail checks
+(bad timestamps, odds ≤ 1, unknown markets …) are counted and reported, not silently dropped.
+`examples/operator/` holds a synthetic sportsbook export (2,021 bets, 6 markets) with one planted
+pattern — two day-old accounts backing a 9.0 outsider in a CEO-appointment market hours before
+the announcement. The engine ranks those two accounts first (scores 85 and 83) and the case
+writer rates both High.
+
 ## Reviewing alerts
 
 Each alert on the dashboard has a review box: pick **confirmed**, **dismissed**,
@@ -75,7 +92,7 @@ Score (0–100) = sum of points from each signal; every point is stored against 
 |---|---|---|
 | Pre-resolution timing | 22 | How much *later than the market's own money* the position was bought, at a low price. A market that trades almost entirely in its final hours (sports, 5-minute crypto) gives no timing signal |
 | Low-probability conviction | 22 | Size of bets below 0.30 implied probability, relative to market volume (log(1/price) "surprise") |
-| Fresh / single-purpose wallet | 18 | New account, few markets ever traded, most of its money in this market |
+| Fresh / single-purpose account | 18 | New account, few markets ever traded, most of its money in this market |
 | Size anomaly | 13 | Position size vs. this market (robust z-score) and vs. the account's own history |
 | Category prior | 12 | How likely a small group knows the answer early (personnel, corporate, government ≫ sports, prices) |
 | Coordinated entry | 13 | Other low-history accounts buying the same long shot within ±24 h, compared against the same flow on the losing side |

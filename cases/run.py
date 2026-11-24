@@ -21,7 +21,7 @@ import config
 from cases.bundle import build_bundle, case_id
 from cases.writer import MissingApiKey, make_client, render_markdown, write_case
 
-OUT_DIR = config.DATA_DIR / "cases"
+OUT_DIR = config.OUTPUT_DIR / "cases"
 
 DDL = """CREATE TABLE IF NOT EXISTS case_files (
     position_id VARCHAR PRIMARY KEY, created_at TIMESTAMP, model VARCHAR,

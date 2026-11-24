@@ -21,14 +21,14 @@ from scoring.score import (ALERT_THRESHOLD, BEHAVIOURAL, EXIT_MAX_PENALTY, HEDGE
                            STRONG_AT, SUPPORTING_AT, WEIGHTS, risk_band, short_account, signal_strength)
 from signals import low_probability, timing
 
-DISCLAIMER = ("Demo built on public data. This is anomalous activity warranting review, based on statistical "
+DISCLAIMER = ("This is anomalous activity warranting review, based on statistical "
               "signals. It is not a legal finding and does not identify or accuse any person.")
 
 DATA_LIMITATIONS = [
     "No news or announcement feed is included: we cannot see whether public information appeared before the trades.",
     "The time the outcome became public is estimated from market prices (the winner never again traded below "
     f"{features.CERTAINTY_PRICE}), not from a verified announcement time.",
-    "The wallet is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
+    "The account is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
     "Account history covers the sample of markets loaded for this demo, plus the venue's public profile statistics.",
     "Only trades executed on this venue are visible; positions held elsewhere are unknown.",
 ]

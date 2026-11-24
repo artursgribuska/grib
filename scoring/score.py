@@ -32,7 +32,7 @@ ALERT_THRESHOLD = 50.0     # "warrants review" line used by the case-file step
 LABELS = {
     "pre_resolution_timing": "Pre-resolution timing",
     "low_probability_conviction": "Low-probability conviction",
-    "fresh_single_purpose_wallet": "Fresh / single-purpose wallet",
+    "fresh_single_purpose_wallet": "Fresh / single-purpose account",
     "size_anomaly": "Size anomaly",
     "category_prior": "Category prior",
     "coordinated_entry": "Coordinated entry",
@@ -85,9 +85,9 @@ def explain(ctx: PositionContext, results: list[SignalResult], contrib: dict, to
         bits.append(f"built ~{_h(t.get('weighted_avg_lead_hours', 0))} before the outcome became public")
     age = fw.get("account_age_days_at_first_buy")
     if age is not None and age <= 14 and fw.get("first_seen_source") == "venue_join_date":
-        bits.append(f"from a wallet {age:.0f} days old")
+        bits.append(f"from an account {age:.0f} days old")
     elif fw.get("markets_traded", 99) <= 3:
-        bits.append(f"from a wallet that has traded only {fw['markets_traded']} market(s)")
+        bits.append(f"from an account that has traded only {fw['markets_traded']} market(s)")
     if ce.get("winner_side_low_history_peers", 0) >= 2 and contrib.get("coordinated_entry", 0) > 0:
         bits.append(f"alongside {ce['winner_side_low_history_peers']} other low-history buyers of the same long shot")
     if ctx.exited_ratio >= 0.5:

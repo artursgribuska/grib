@@ -141,7 +141,7 @@ def main(argv=None) -> None:
     con = load_copy()
     planted = plant(con, args.markets, args.seed)
     res = evaluate(con, planted)
-    out = config.DATA_DIR / "backtest.csv"
+    out = config.OUTPUT_DIR / "backtest.csv"
     res.to_csv(out, index=False)
     print(summarise(res))
     print(f"\nPer-position results: {out}")

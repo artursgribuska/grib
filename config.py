@@ -1,11 +1,16 @@
 """Project-wide settings. Change numbers here, not deep inside modules."""
 
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
 CACHE_DIR = DATA_DIR / "cache"
-DB_PATH = DATA_DIR / "integrity.duckdb"
+# GRIB_DB_PATH points the whole pipeline at another database (e.g. an operator's own data)
+DB_PATH = Path(os.environ["GRIB_DB_PATH"]) if os.environ.get("GRIB_DB_PATH") else DATA_DIR / "integrity.duckdb"
+# Generated outputs (case files, dashboard, backtest) live next to their database so two
+# datasets never overwrite each other: data/ for the default database, data/<db name>/ otherwise.
+OUTPUT_DIR = DATA_DIR if DB_PATH == DATA_DIR / "integrity.duckdb" else DATA_DIR / DB_PATH.stem
 
 DATA_API = "https://data-api.polymarket.com/v2"
 GAMMA_API = "https://gamma-api.polymarket.com"

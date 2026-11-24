@@ -108,10 +108,22 @@ def save(con: duckdb.DuckDBPyConnection, scored: list[ScoredPosition]) -> None:
             sig_rows.append({"position_id": pid, "signal": s.name, "score": round(s.score, 4),
                              "contribution": sp.contributions[s.name], "reason": s.reason,
                              "evidence_json": json.dumps(s.evidence, default=str)})
+    if not rows:   # nothing qualified (e.g. a small operator dataset): keep the tables, empty
+        rows = [dict.fromkeys(["position_id", "market_id", "account_id", "outcome", "category", "question", "score",
+                               "position_notional", "avg_price", "first_buy_ts", "certainty_at", "resolved_at",
+                               "hedge_ratio", "exited_ratio", "contributions_json", "explanation"])]
+        sig_rows = [dict.fromkeys(["position_id", "signal", "score", "contribution", "reason", "evidence_json"])]
+        empty = True
+    else:
+        empty = False
     con.register("ps", pd.DataFrame(rows))
     con.execute("CREATE OR REPLACE TABLE position_scores AS SELECT * FROM ps ORDER BY score DESC")
+    if empty:
+        con.execute("DELETE FROM position_scores")
     con.register("sr", pd.DataFrame(sig_rows))
     con.execute("CREATE OR REPLACE TABLE signal_results AS SELECT * FROM sr")
+    if empty:
+        con.execute("DELETE FROM signal_results")
     build_rollups(con)
 
 

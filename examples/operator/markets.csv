@@ -1,0 +1,7 @@
+market_id,question,category,opened_at,resolved_at,winning_outcome
+M1,Who will be appointed CEO of Northwind plc?,personnel,2026-09-04T09:00:00,2026-10-14T09:00:00,Dana Ruiz
+M2,Riverside FC v Harbour Town — match result,sports,2026-10-06T17:00:00,2026-10-12T17:00:00,Harbour Town
+M3,Best Picture at the Lumen Awards,awards_entertainment,2026-09-20T03:00:00,2026-10-20T03:00:00,The Long Field
+M4,Will Northwind announce a merger by 31 October?,corporate,2026-10-06T23:00:00,2026-10-31T23:00:00,No
+M5,Coastal Derby — match result,sports,2026-10-13T15:00:00,2026-10-18T15:00:00,Coastal Utd
+M6,"Central bank rate decision, October",economics_data,2026-10-09T12:00:00,2026-10-29T12:00:00,Hold

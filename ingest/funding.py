@@ -63,6 +63,7 @@ TOKENS = {
 ZERO_ADDRESS = "0x" + "0" * 40   # token mints (e.g. pUSD minted on deposit) — no personal sender
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 CACHE = config.CACHE_DIR / "polygon-rpc"
+WALLET_PATTERN = "0x[0-9a-f]{40}"   # on-chain wallets only; operator account IDs are skipped
 MIN_TARGET_SCORE = 40.0        # wallets in alerts at/above this score, plus their cohort peers
 
 
@@ -190,6 +191,7 @@ def targets(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
         SELECT w.account_id, min(t.ts) AS first_trade, any_value(a.first_seen_at) AS first_seen_at,
                any_value(json_extract_string(a.metadata_json, '$.first_seen_source')) AS src
         FROM w JOIN trades t USING (account_id) LEFT JOIN accounts a USING (account_id)
+        WHERE regexp_full_match(w.account_id, '{WALLET_PATTERN}')
         GROUP BY 1 ORDER BY 1""").df()
 
 

@@ -48,10 +48,10 @@ def coordinated_entry(ctx: PositionContext) -> SignalResult:
         reason += (" That is more one-sided than ordinary new-account flow." if cohort_score > 0
                    else " That is not unusual for this market.")
     if links:
-        reason += (f" {links} of them received USDC from the same personal address as this wallet, or from / to "
-                   f"this wallet directly, around when they started trading.")
+        reason += (f" {links} of them received USDC from the same personal address as this account, or from / to "
+                   f"this account directly, around when they started trading.")
     elif ctx.funding_scan_status == "ok" and w:
-        reason += " None of them shares a personal funding address with this wallet."
+        reason += " None of them shares a personal funding address with this account."
     evidence = {
         "winner_side_low_history_peers": w,
         "loser_side_low_history_peers": l,

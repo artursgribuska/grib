@@ -24,7 +24,7 @@ from cases.bundle import DISCLAIMER, case_id
 from scoring.run import ROLLUP_MIN_SCORE
 from scoring.score import ALERT_THRESHOLD, LABELS, short_account
 
-OUT = config.DATA_DIR / "dashboard" / "index.html"
+OUT = config.OUTPUT_DIR / "dashboard" / "index.html"
 SIGNAL_ORDER = ["pre_resolution_timing", "low_probability_conviction", "fresh_single_purpose_wallet",
                 "size_anomaly", "category_prior", "coordinated_entry"]
 COLORS = {"pre_resolution_timing": "var(--c1)", "low_probability_conviction": "var(--c2)",
@@ -53,6 +53,7 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
     sigs = con.execute("SELECT * FROM signal_results WHERE position_id IN (SELECT unnest(?))", [ids]).df()
     cases = (con.execute("SELECT position_id, risk_level, risk_confidence, checks_passed, case_json FROM case_files")
              .df() if "case_files" in t else pd.DataFrame(columns=["position_id"]))
+    venues = [r[0] for r in con.execute("SELECT DISTINCT venue FROM markets ORDER BY 1").fetchall()]
     stats = con.execute(f"""SELECT (SELECT count(*) FROM markets), (SELECT count(*) FROM trades),
                                    (SELECT count(*) FROM position_scores),
                                    (SELECT count(*) FROM position_scores WHERE score >= {ALERT_THRESHOLD})""").fetchone()
@@ -64,11 +65,11 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
     reviews = (con.execute("""SELECT position_id, decision, reviewer, note, decided_at FROM (
                     SELECT *, row_number() OVER (PARTITION BY position_id ORDER BY decided_at DESC) rn FROM reviews)
                   WHERE rn = 1""").df().set_index("position_id") if "reviews" in t else pd.DataFrame())
-    bt_path = config.DATA_DIR / "backtest.csv"
+    bt_path = config.OUTPUT_DIR / "backtest.csv"
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
     return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
                 stats=stats, events=events, wallets=wallets, backtest=backtest,
-                funding=funding, scans=scans, reviews=reviews)
+                funding=funding, scans=scans, reviews=reviews, venues=venues)
 
 
 def bar(contrib: dict) -> str:
@@ -182,8 +183,8 @@ def rollups(d: dict) -> str:
     <p class="muted">Alerts scoring ≥ {ROLLUP_MIN_SCORE:.0f}, grouped by event (related markets on the same story).</p>
     <div class="scroll"><table><thead><tr><th>Event</th><th>Wallets</th><th>Low-history</th><th>Markets</th><th>Total</th><th>Max score</th></tr></thead>
     <tbody>{ev_rows}</tbody></table></div></section>
-  <section><h2>Wallets flagged in several markets</h2>
-    <div class="scroll"><table><thead><tr><th>Wallet</th><th>Alerts</th><th>Total</th><th>Max score</th><th>Markets</th></tr></thead>
+  <section><h2>Accounts flagged in several markets</h2>
+    <div class="scroll"><table><thead><tr><th>Account</th><th>Alerts</th><th>Total</th><th>Max score</th><th>Markets</th></tr></thead>
     <tbody>{wl_rows}</tbody></table></div></section>"""
 
 
@@ -287,11 +288,12 @@ def render(d: dict) -> str:
     filters = '<button class="on" data-cat="all">All</button>' + "".join(
         f'<button data-cat="{e(c)}">{e(c.replace("_", " "))}</button>' for c in cats)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    source = ", ".join("public Polymarket" if v == "polymarket" else v for v in d.get("venues", [])) or "loaded"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Integrity Analyst Alerts</title>
 <style>{CSS}</style></head><body><main>
   <h1>Integrity Analyst — alerts</h1>
-  <p class="muted">Built {built} from public Polymarket data.</p>
+  <p class="muted">Built {built} from {e(source)} data.</p>
   <div class="disc">{e(DISCLAIMER)}</div>
   <div class="stats">
     <div class="stat"><b>{n_markets:,}</b>markets</div><div class="stat"><b>{n_trades:,}</b>trade rows</div>
