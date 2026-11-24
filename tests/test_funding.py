@@ -11,11 +11,12 @@ from tests.test_features import T, build_db
 def test_window_uses_join_date_and_caps_length():
     ft = datetime(2026, 11, 20)
     s, e = funding.window(ft, datetime(2026, 11, 18), "venue_join_date")
-    assert s == datetime(2026, 11, 17) and e == ft
+    m = funding.END_MARGIN
+    assert s == datetime(2026, 11, 17) and e == ft + m
     s, e = funding.window(ft, datetime(2026, 9, 1), "venue_join_date")          # joined long before
-    assert s == datetime(2026, 8, 31) and e - s == timedelta(days=funding.SCAN_DAYS)
+    assert s == datetime(2026, 8, 31) and e - s == timedelta(days=funding.SCAN_DAYS) + m
     s, e = funding.window(ft, None, None)                                       # unknown join date
-    assert e == ft and e - s == timedelta(days=3)
+    assert e == ft + m and e - s == timedelta(days=3) + m
 
 
 class FakeRpc:

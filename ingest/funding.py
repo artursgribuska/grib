@@ -54,6 +54,7 @@ SECONDS_PER_BLOCK = 2.0        # first guess for block <-> time; refined against
 FINALITY_BLOCKS = 512          # only cache log ranges this far behind the head
 SCAN_DAYS = 7
 PRE_JOIN_HOURS = 24
+END_MARGIN = timedelta(minutes=15)   # deposits often land seconds before the first trade; block lookup rounds down
 TOKENS = {
     "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": "USDC.e",
     "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359": "USDC",
@@ -198,7 +199,7 @@ def window(first_trade: datetime, first_seen: datetime | None, src: str | None) 
     end = min(first_trade, start + timedelta(days=SCAN_DAYS))
     if end - start < timedelta(days=3):          # unknown join date: look back a few days before first trade
         start = end - timedelta(days=3)
-    return start, end
+    return start, end + END_MARGIN
 
 
 def scan_one(rpc: Rpc, row) -> tuple[dict, list[dict]]:

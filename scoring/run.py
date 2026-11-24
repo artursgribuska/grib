@@ -202,7 +202,7 @@ def print_rollups(con: duckdb.DuckDBPyConnection, n: int = 10) -> None:
     if fc.empty:
         print("  none" if scanned[0] else "  funding not scanned — run `uv run python -m ingest.funding`")
     for r in fc.itertuples():
-        fm = r.flagged_markets if isinstance(r.flagged_markets, (list, tuple)) or hasattr(r.flagged_markets, "__len__") else []
+        fm = r.flagged_markets if hasattr(r.flagged_markets, "__len__") and not isinstance(r.flagged_markets, str) else []
         mk = "; ".join(q[:40] for q in list(fm)[:3])
         print(f"  sender {short_account(r.sender)} funded {r.wallets_funded} wallets "
               f"({r.flagged_wallets} flagged)  {mk}")

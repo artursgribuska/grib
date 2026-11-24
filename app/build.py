@@ -34,6 +34,14 @@ COLORS = {"pre_resolution_timing": "var(--c1)", "low_probability_conviction": "v
 e = lambda x: html.escape(str(x), quote=True)
 
 
+def _list(x) -> list:
+    """DuckDB list columns arrive as arrays, lists or NA — normalise to a list."""
+    try:
+        return [] if x is None or pd.isna(x) is True else list(x)
+    except (TypeError, ValueError):
+        return list(x)
+
+
 def _tables(con) -> set[str]:
     return {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
 
@@ -131,14 +139,14 @@ def rollups(d: dict) -> str:
                       for r in ev.itertuples()) or "<tr><td colspan=6 class=muted>None</td></tr>"
     wl_rows = "".join(f"<tr><td>{e(short_account(r.account_id))}</td><td class=num>{r.alerts}</td>"
                       f"<td class=num>${r.total_usd:,.0f}</td><td class=num>{r.max_score:.1f}</td>"
-                      f"<td>{e('; '.join(list(r.questions)[:3]))}</td></tr>"
+                      f"<td>{e('; '.join(_list(r.questions)[:3]))}</td></tr>"
                       for r in wl.itertuples()) or "<tr><td colspan=5 class=muted>None</td></tr>"
     fc, scans = d["funding"], d["scans"]
     n_ok = scans.get("ok", 0)
     n_other = sum(v for k, v in scans.items() if k != "ok")
     fc_rows = "".join(f"<tr><td>{e(short_account(r.sender))}</td><td class=num>{r.wallets_funded}</td>"
                       f"<td class=num>{r.flagged_wallets}</td>"
-                      f"<td>{e('; '.join(list(r.flagged_markets if r.flagged_markets is not None else [])[:3]))}</td></tr>"
+                      f"<td>{e('; '.join(_list(r.flagged_markets)[:3]))}</td></tr>"
                       for r in fc.itertuples()) if len(fc) else ""
     fc_note = (f"{n_ok} wallets scanned; {n_other} could not be (history too old for the public node)." if scans
                else "Funding not scanned — run <code>uv run python -m ingest.funding</code>.")
