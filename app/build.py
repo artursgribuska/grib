@@ -211,6 +211,26 @@ def rollups(d: dict) -> str:
     <tbody>{wl_rows}</tbody></table></div></section>"""
 
 
+def known_cases_html() -> str:
+    """Headline of the known-cases study (eval/known_cases.py), if it has been run."""
+    f = config.DATA_DIR / "known_cases" / "summary.json"
+    try:
+        sm = json.loads(f.read_text())
+    except (OSError, ValueError):
+        return ""
+    rows = "".join(f"<tr><td>{e(c['case'])}</td><td class=num>{c['markets']}</td><td class=num>{c['candidates']}</td>"
+                   f"<td class=num>{c['at_threshold']}</td><td class=num><b>{c['best_rank']:,}</b></td><td>{e(c['about'])}</td></tr>"
+                   for c in sm.get("cases", []))
+    return f"""
+  <section><h2>Validation on publicly reported cases</h2>
+    <p class="muted">The unchanged engine was run on markets that were the subject of public reports of suspected
+      trading on non-public information, inside the ordinary universe of {sm['positions']:,} positions (rank 1 = top alert).
+      It saw trades only. {sm.get('case_share_of_top25', 0)} of the top 25 alerts came from case markets, which hold
+      {sm.get('case_positions', 0):,} of the positions. Reports are allegations; see <code>data/known_cases/report.md</code>.</p>
+    <div class="scroll"><table><thead><tr><th>Case</th><th>Markets</th><th>Candidates</th><th>≥ threshold</th>
+      <th>Best rank</th><th>Why it is a case</th></tr></thead><tbody>{rows}</tbody></table></div></section>"""
+
+
 def backtest_html(bt: pd.DataFrame | None) -> str:
     if bt is None or bt.empty:
         return ""
@@ -339,6 +359,7 @@ def render(d: dict) -> str:
     <code>uv run python -m app.review import decisions-….json</code>.</p>
   {alert_rows(d)}
   {rollups(d)}
+  {known_cases_html()}
   {backtest_html(d['backtest'])}
 </main><script>{JS}</script></body></html>"""
 

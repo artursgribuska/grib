@@ -50,3 +50,18 @@ def test_case_market_is_loaded_scored_and_reported(tmp_path, monkeypatch):
     assert "## prize" in text and "best rank **" in text and "of the top 25 alerts" in text
     assert WALLET not in text                        # shown truncated only
     assert (tmp_path / "kc" / "report.md").exists()
+
+
+def test_dashboard_shows_known_cases_summary(tmp_path, monkeypatch):
+    import json
+    import config
+    from app.build import known_cases_html
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    assert known_cases_html() == ""                       # study not run: nothing shown
+    (tmp_path / "known_cases").mkdir()
+    (tmp_path / "known_cases" / "summary.json").write_text(json.dumps({
+        "positions": 7350, "case_share_of_top25": 10, "case_positions": 384,
+        "cases": [{"case": "nobel-2025", "markets": 1, "candidates": 92, "at_threshold": 3, "best_rank": 3,
+                   "about": "<b>x</b>"}]}))
+    html = known_cases_html()
+    assert "nobel-2025" in html and "<b>3</b>" in html and "&lt;b&gt;x" in html

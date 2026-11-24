@@ -138,6 +138,7 @@ def report() -> str:
              "These markets were the subject of public reports of suspected trading on non-public information. "
              "The reports are allegations; accounts are pseudonymous and shown truncated. The engine was given "
              "trades only — no names, times or wallets.", ""]
+    summary = {"positions": int(total), "cases": []}
     top25 = ranked[ranked["rank"] <= 25]
     n_case_top25 = top25.market_id.isin(cases.market_id).sum()
     lines += [f"**{n_case_top25} of the top 25 alerts** come from the {len(cases)} case market(s) "
@@ -162,6 +163,9 @@ def report() -> str:
             lines += ["No candidate positions (winning-side, ≥ $1,000, before the public moment).", ""]
             continue
         at = (pos.score >= ALERT_THRESHOLD).sum()
+        summary["cases"].append({"case": case["key"], "markets": int(len(cm)), "candidates": int(len(pos)),
+                                 "at_threshold": int(at), "best_rank": int(pos["rank"].min()),
+                                 "about": case["about"]})
         lines += [f"{len(pos)} candidate positions; {at} at or above the threshold; best rank **{int(pos['rank'].min())}** "
                   f"of {total:,}.", "",
                   "| Rank | Score | Account | Market | Cost | Avg price | First buy | Hours before public | Top signals |",
@@ -194,6 +198,9 @@ def report() -> str:
     text = "\n".join(lines) + "\n"
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "report.md").write_text(text)
+    summary["case_share_of_top25"] = int(n_case_top25)
+    summary["case_positions"] = int(ranked.market_id.isin(cases.market_id).sum())
+    (OUT / "summary.json").write_text(json.dumps(summary, indent=1))
     return text
 
 
