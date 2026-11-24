@@ -30,13 +30,15 @@ def low_probability_conviction(ctx: PositionContext) -> SignalResult:
     raw = sum(math.log(1 / b.price) * b.notional for b in low) / vol
     score = 1 - math.exp(-raw / SCALE)
     total_cost = ctx.buy_notional
-    payout = ctx.buy_size  # each winning share pays 1 unit at resolution
-    profit = payout - total_cost
+    payout = ctx.held_size  # each winning share still held pays 1 unit at resolution
+    profit = payout + ctx.sold_notional_pre - total_cost
     if low:
         vwap_low = low_notional / low_size
         reason = (f"Bought {money(low_notional)} of the winning outcome at an average price of "
                   f"{vwap_low:.2f} (≈{vwap_low:.0%} implied chance) — {low_notional / vol:.1%} of the market's "
-                  f"total volume; the position paid out {money(payout)} for a {money(profit)} profit.")
+                  f"total volume; the position paid out {money(payout)} for a {money(profit)} profit"
+                  + (f" ({ctx.exited_ratio:.0%} of the shares were sold before the outcome became public)."
+                     if ctx.exited_ratio > 0 else "."))
     else:
         vwap_low = None
         reason = (f"No buys below {LOW_PRICE:.2f}; average entry price was {ctx.vwap:.2f}, "
@@ -52,5 +54,7 @@ def low_probability_conviction(ctx: PositionContext) -> SignalResult:
         "position_cost": round(total_cost, 2),
         "position_payout": round(payout, 2),
         "position_profit": round(profit, 2),
+        "shares_sold_before_public": round(ctx.sold_size_pre, 2),
+        "share_of_position_sold_before_public": round(ctx.exited_ratio, 4),
     }
     return SignalResult(NAME, score, reason, evidence)

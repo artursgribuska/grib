@@ -48,12 +48,24 @@ Score (0–100) = sum of points from each signal; every point is stored against 
 
 | Signal | Max pts | What it measures |
 |---|---|---|
-| Pre-resolution timing | 25 | Money placed 1 h–72 h before the outcome became public, at a low price |
-| Low-probability conviction | 25 | Size of bets below 0.30 implied probability, relative to market volume (log(1/price) "surprise") |
-| Fresh / single-purpose wallet | 20 | New account, few markets ever traded, most of its money in this market |
-| Size anomaly | 15 | Position size vs. this market (robust z-score) and vs. the account's own history |
-| Category prior | 15 | How likely a small group knows the answer early (personnel, corporate, government ≫ sports, prices) |
+| Pre-resolution timing | 22 | How much *later than the market's own money* the position was bought, at a low price. A market that trades almost entirely in its final hours (sports, 5-minute crypto) gives no timing signal |
+| Low-probability conviction | 22 | Size of bets below 0.30 implied probability, relative to market volume (log(1/price) "surprise") |
+| Fresh / single-purpose wallet | 18 | New account, few markets ever traded, most of its money in this market |
+| Size anomaly | 13 | Position size vs. this market (robust z-score) and vs. the account's own history |
+| Category prior | 12 | How likely a small group knows the answer early (personnel, corporate, government ≫ sports, prices) |
+| Coordinated entry | 13 | Other low-history accounts buying the same long shot within ±24 h, compared against the same flow on the losing side |
 | Hedge adjustment | −20 | Deducted if the same account also bought the losing side |
+| Exit adjustment | −30 | Deducted in proportion to the shares sold back *before* the outcome became public |
+
+`scoring.run` also rolls alerts up **by event** (related markets on the same story, e.g.
+several "…by date?" variants) and **by wallet** (accounts flagged in several markets),
+in the `alert_events` and `alert_wallets` tables.
+
+Each evidence bundle carries a **starting risk rating** from fixed rules (Low if most of
+the position was sold before public, if no behavioural signal is at least supporting, or
+if the score is under 50; High at 65+ with three strong signals including a behavioural
+one; Medium otherwise). The case writer keeps it unless it names a specific fact in the
+bundle that justifies moving one level.
 
 Alerts are **anomalous activity warranting review**, not findings of wrongdoing.
 

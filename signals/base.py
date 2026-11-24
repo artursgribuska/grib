@@ -43,6 +43,16 @@ class PositionContext:
     market_percentile: float | None = None       # 0..1 rank of this position in its market
     market_n_positions: int = 0
     hedge_notional: float = 0.0                  # same account's buys of the losing outcome
+    sold_size_pre: float = 0.0                   # shares of `outcome` sold back before certainty
+    sold_notional_pre: float = 0.0               # proceeds of those sales
+    # market timing baseline (how late this market's money arrives in general)
+    market_avg_lateness: float | None = None
+    market_share_within_72h: float | None = None
+    market_lifetime_hours: float | None = None
+    # entry cohort: other low-history long-shot buyers entering within the cohort window
+    cohort_winner_peers: int = 0
+    cohort_loser_peers: int = 0
+    cohort_winner_peer_usd: float = 0.0
 
     @property
     def buy_notional(self) -> float:
@@ -56,6 +66,16 @@ class PositionContext:
     def vwap(self) -> float:
         s = self.buy_size
         return self.buy_notional / s if s else 0.0
+
+    @property
+    def held_size(self) -> float:
+        """Shares still held when the outcome became public."""
+        return max(0.0, self.buy_size - self.sold_size_pre)
+
+    @property
+    def exited_ratio(self) -> float:
+        """Share of the bought shares sold back before the outcome became public (0..1)."""
+        return clip01(self.sold_size_pre / self.buy_size) if self.buy_size else 0.0
 
     @property
     def first_buy_ts(self) -> datetime:

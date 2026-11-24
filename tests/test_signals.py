@@ -119,7 +119,8 @@ def test_category_prior():
 def test_score_is_sum_of_contributions_and_traceable():
     c = ctx([buy(6, 0.10, 20_000)], account_first_seen_at=CERT - timedelta(days=2),
             account_first_seen_source="venue_join_date", lifetime_markets=1, dataset_buy_notional=20_000,
-            market_log_median=2.0, market_log_mad=0.5, market_percentile=0.999, market_n_positions=500)
+            market_log_median=2.0, market_log_mad=0.5, market_percentile=0.999, market_n_positions=500,
+            cohort_winner_peers=10, cohort_loser_peers=0)
     sp = score_position(c)
     assert abs(sum(WEIGHTS.values()) - 1) < 1e-9
     assert sp.score == pytest.approx(sum(sp.contributions.values()), abs=0.11)
@@ -143,3 +144,51 @@ def test_explanation_never_contains_full_wallet_or_accusation():
     for word in ("insider", "guilty", "fraud"):
         assert word not in sp.explanation.lower()
     assert short_account("0x" + "ab" * 20) == "0xabab…abab"
+
+
+# ---- timing vs the market's own rhythm ------------------------------------------------
+def test_timing_is_relative_to_market_baseline():
+    b = [buy(6, 0.10, 5_000)]
+    assert pre_resolution_timing(ctx(b, market_avg_lateness=0.2)).score == 1.0     # market money arrives early
+    assert pre_resolution_timing(ctx(b, market_avg_lateness=0.99)).score < 0.05    # sports / 5-min crypto
+    mid = pre_resolution_timing(ctx(b, market_avg_lateness=0.85)).score
+    assert 0.2 < mid < 0.9
+    r = pre_resolution_timing(ctx(b, market_avg_lateness=1.0, market_share_within_72h=1.0))
+    assert "no later than the market" in r.reason and "100% of all buying" in r.reason
+
+
+def test_timing_last_hour_discount_still_applies():
+    one_h = pre_resolution_timing(ctx([buy(0.5, 0.10, 5_000)], market_avg_lateness=0.2))
+    six_h = pre_resolution_timing(ctx([buy(6, 0.10, 5_000)], market_avg_lateness=0.2))
+    assert one_h.score < six_h.score
+
+
+# ---- coordinated entry ---------------------------------------------------------------
+@pytest.mark.parametrize("win,lose,lo,hi", [(0, 0, 0, 0), (1, 0, 0, 0), (4, 0, 0.45, 0.55),
+                                            (10, 0, 0.99, 1.0), (40, 30, 0.0, 0.2), (3, 6, 0, 0)])
+def test_coordinated_entry_uses_losing_side_as_control(win, lose, lo, hi):
+    from signals.coordinated_entry import coordinated_entry
+    r = coordinated_entry(ctx([buy(6, 0.1, 5_000)], cohort_winner_peers=win, cohort_loser_peers=lose))
+    assert lo <= r.score <= hi
+
+
+# ---- exits and the starting risk band --------------------------------------------------
+def test_exit_reduces_score_and_payout():
+    held = ctx([buy(6, 0.10, 5_000)])
+    sold = ctx([buy(6, 0.10, 5_000)], sold_size_pre=50_000, sold_notional_pre=20_000)
+    assert sold.exited_ratio == 1.0 and held.exited_ratio == 0.0
+    assert score_position(sold).contributions["exit_adjustment"] == -30
+    assert score_position(sold).score < score_position(held).score
+    lp = low_probability_conviction(sold).evidence
+    assert lp["position_payout"] == 0 and lp["position_profit"] == 15_000
+
+
+def test_risk_band_rules():
+    from scoring.score import risk_band
+    strong3 = {"pre_resolution_timing": 0.9, "low_probability_conviction": 0.8, "size_anomaly": 0.75}
+    assert risk_band(70, strong3, 0.0)[0] == "High"
+    assert risk_band(60, strong3, 0.0)[0] == "Medium"
+    assert risk_band(70, strong3, 0.6)[0] == "Low"                      # sold out before public
+    assert risk_band(45, strong3, 0.0)[0] == "Low"                      # below review line
+    profile_only = {"fresh_single_purpose_wallet": 1.0, "size_anomaly": 1.0, "category_prior": 1.0}
+    assert risk_band(80, profile_only, 0.0)[0] == "Low"

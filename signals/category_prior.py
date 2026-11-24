@@ -27,9 +27,9 @@ CATEGORY_WEIGHTS = {
     "elections": 0.45,
     "other": 0.40,
     "public_metric": 0.25,
-    "sports": 0.25,
-    "price_threshold": 0.15,
-    "crypto_price": 0.10,
+    "sports": 0.15,
+    "price_threshold": 0.10,
+    "crypto_price": 0.05,
 }
 
 WHY = {

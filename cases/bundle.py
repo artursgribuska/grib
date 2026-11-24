@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 import duckdb
 
 from scoring import features
-from scoring.score import ALERT_THRESHOLD, LABELS, WEIGHTS, HEDGE_MAX_PENALTY, short_account
+from scoring.run import ROLLUP_MIN_SCORE
+from scoring.score import (ALERT_THRESHOLD, BEHAVIOURAL, EXIT_MAX_PENALTY, HEDGE_MAX_PENALTY, LABELS,
+                           STRONG_AT, SUPPORTING_AT, WEIGHTS, risk_band, short_account, signal_strength)
 from signals import low_probability, timing
 
 DISCLAIMER = ("Demo built on public data. This is anomalous activity warranting review, based on statistical "
@@ -29,6 +31,15 @@ DATA_LIMITATIONS = [
     "The wallet is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
     "Account history covers the sample of markets loaded for this demo, plus the venue's public profile statistics.",
     "Only trades executed on this venue are visible; positions held elsewhere are unknown.",
+    "No wallet-funding or transfer data is loaded: accounts that entered together cannot be shown to be linked.",
+]
+
+RATING_RULES = [
+    "Low if at least half of the position was sold before the outcome became public.",
+    f"Low if no behavioural signal ({', '.join(LABELS[k] for k in BEHAVIOURAL)}) is at least supporting.",
+    f"Low if the engine score is below the review threshold of {ALERT_THRESHOLD:.0f}.",
+    "High if the engine score is 65 or more with at least three strong signals, including a behavioural one.",
+    "Medium otherwise.",
 ]
 
 MAX_TRADES = 40
@@ -83,6 +94,9 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
     certainty, resolved = m.certainty_at.to_pydatetime(), m.resolved_at.to_pydatetime()
     position_cost = float(p.position_notional)
     lp_ev = json.loads(sigs.loc[sigs.signal == low_probability.NAME, "evidence_json"].iloc[0])
+    sig_scores = dict(zip(sigs.signal, sigs.score.astype(float)))
+    strength = signal_strength(sig_scores)
+    band, band_rule = risk_band(float(p.score), sig_scores, float(p.exited_ratio))
 
     bundle = {
         "case_id": case_id(position_id),
@@ -97,7 +111,18 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
             "low_price_threshold": low_probability.LOW_PRICE,
             "max_points_per_signal": {LABELS[k]: round(100 * w) for k, w in WEIGHTS.items()},
             "max_hedge_deduction": HEDGE_MAX_PENALTY,
+            "max_exit_deduction": EXIT_MAX_PENALTY,
             "review_threshold_score": ALERT_THRESHOLD,
+            "timing_rule": "timing is scored against how late this market's money arrives in general; "
+                           "a market that trades almost entirely in its final hours gives no timing signal",
+            "coordinated_entry_rule": (
+                f"other low-history accounts (at most {features.LOW_HISTORY_MAX_MARKETS} markets traded, or joined at most "
+                f"{features.LOW_HISTORY_MAX_AGE_DAYS} days before buying) buying at least ${features.COHORT_MIN_USD} at an average "
+                f"price of at most {features.COHORT_MAX_PRICE} within {features.COHORT_WINDOW_H} h of this position, "
+                "winning side compared against losing side"),
+            "signal_strength_bands": {"strong": f"score_0_to_1 of at least {STRONG_AT}",
+                                      "supporting": f"score_0_to_1 of at least {SUPPORTING_AT}"},
+            "risk_rating_rules": RATING_RULES,
         },
         "market": {
             "question": m.question,
@@ -130,11 +155,17 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
             "first_buy_at": _ts(p.first_buy_ts),
             "hours_first_buy_before_public": _num((certainty - p.first_buy_ts.to_pydatetime()).total_seconds() / 3600, 1),
             "bought_losing_side_usd": _num(position_cost * float(p.hedge_ratio), 0),
+            "shares_sold_before_public": _num(lp_ev.get("shares_sold_before_public", 0), 0),
+            "share_of_position_sold_before_public": _num(lp_ev.get("share_of_position_sold_before_public", 0), 3),
         },
         "score": {
             "total": _num(p.score, 1),
             "points_by_signal": {LABELS[k]: _num(v, 1) for k, v in contrib.items()},
             "one_line_explanation": p.explanation,
+            "strong_signals": [LABELS[k] for k in strength["strong"]],
+            "supporting_signals": [LABELS[k] for k in strength["supporting"]],
+            "starting_risk_rating": band,
+            "starting_risk_rating_rule": band_rule,
         },
         "signals": [
             {"signal": LABELS[r.signal], "score_0_to_1": _num(r.score, 2), "points": _num(r.contribution, 1),
@@ -144,6 +175,7 @@ def build_bundle(con: duckdb.DuckDBPyConnection, position_id: str) -> dict:
         "account_trades_in_market": account_trades(con, venue, mid, acct, certainty),
         "market_price_path": price_path(con, venue, mid, p.first_buy_ts.to_pydatetime(), resolved),
         "market_context": market_context(con, venue, mid, acct, certainty),
+        "event_context": event_context(con, mid, acct, position_id),
         "data_limitations": DATA_LIMITATIONS,
     }
     return bundle
@@ -154,6 +186,26 @@ def _other_alerts(con, acct: str, position_id: str) -> list[dict]:
                           WHERE account_id = ? AND position_id <> ? AND score >= ?
                           ORDER BY score DESC LIMIT 5""", [acct, position_id, ALERT_THRESHOLD - 10]).fetchall()
     return [{"market": q, "score": _num(s, 1), "cost_usd": _num(n, 0)} for q, s, n in rows]
+
+
+def event_context(con, mid: str, acct: str, position_id: str) -> dict:
+    """Other flagged wallets on the same story (related markets grouped by event)."""
+    row = con.execute("SELECT coalesce(json_extract_string(metadata_json, '$.event_title'), question) FROM markets "
+                      "WHERE market_id = ?", [mid]).fetchone()
+    key = row[0] if row else None
+    others = con.execute(f"""
+        SELECT ps.account_id, ps.question, ps.score, ps.position_notional, ps.first_buy_ts
+        FROM position_scores ps JOIN markets m USING (market_id)
+        WHERE coalesce(json_extract_string(m.metadata_json, '$.event_title'), m.question) = ?
+          AND ps.position_id <> ? AND ps.account_id <> ? AND ps.score >= {ROLLUP_MIN_SCORE}
+        ORDER BY ps.score DESC LIMIT 8""", [key, position_id, acct]).fetchall()
+    return {
+        "event": key,
+        "other_flagged_wallets_on_this_event": len(others),
+        "flagged_positions": [{"display_id": short_account(a), "market": q, "score": _num(sc, 1),
+                               "cost_usd": _num(n, 0), "first_buy_at": _ts(t)} for a, q, sc, n, t in others],
+        "note": f"positions by other accounts on related markets scoring at least {ROLLUP_MIN_SCORE:.0f}",
+    }
 
 
 def account_trades(con, venue, mid, acct, certainty: datetime) -> list[dict]:

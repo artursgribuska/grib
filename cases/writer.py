@@ -8,8 +8,8 @@ Checks after every draft:
 If a draft fails, the model gets one chance to fix the listed problems. A draft that
 still fails is saved but flagged `checks_passed = False` for human attention.
 
-Model and key: `claude-sonnet-5-5`, API key from the ANTHROPIC_API_KEY environment
-variable (or a local `.env` file). Never hard-code keys.
+Model and key: `claude-sonnet-5-5`, API key from GRIB_ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY)
+in the environment or a local `.env` file. Never hard-code keys.
 """
 
 from __future__ import annotations
