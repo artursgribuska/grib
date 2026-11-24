@@ -1,0 +1,584 @@
+{
+ "case_id": "0x6125d5c4:0xd105f1f4995a283f5e83236aa1851fc828867b2c",
+ "generated_at": "2026-11-24 10:14 UTC",
+ "venue": "polymarket",
+ "disclaimer": "Demo built on public data. This is anomalous activity warranting review, based on statistical signals. It is not a legal finding and does not identify or accuse any person.",
+ "method": {
+  "unit_of_review": "one account's buying of the eventual winning outcome in one market, before the outcome became public",
+  "public_certainty_rule": "first trade after which the winning outcome never again traded below 0.95",
+  "minimum_position_usd": 1000,
+  "timing_windows_hours": [
+   1,
+   24,
+   72
+  ],
+  "low_price_threshold": 0.3,
+  "max_points_per_signal": {
+   "Pre-resolution timing": 25,
+   "Low-probability conviction": 25,
+   "Fresh / single-purpose wallet": 20,
+   "Size anomaly": 15,
+   "Category prior": 15
+  },
+  "max_hedge_deduction": 20.0,
+  "review_threshold_score": 50.0
+ },
+ "market": {
+  "question": "Will the Tesla Roadster fly for 1s+?",
+  "category": "corporate",
+  "winning_outcome": "Yes",
+  "opened_at": "2026-10-14 19:48 UTC",
+  "outcome_became_public_at": "2026-10-16 01:28 UTC",
+  "officially_resolved_at": "2026-10-16 03:13 UTC",
+  "hours_between_public_and_resolution": 1.8,
+  "market_volume_usd": 440563.0,
+  "accounts_trading": 1166,
+  "positions_before_public": 1244
+ },
+ "account": {
+  "display_id": "0xd105…7b2c",
+  "first_seen_at": "2024-09-17 18:00 UTC",
+  "first_seen_source": "venue_join_date",
+  "lifetime_markets_traded_on_venue": 71,
+  "lifetime_biggest_win_usd": 50877.0,
+  "markets_in_demo_sample": 1,
+  "total_buying_in_demo_sample_usd": 1000.0,
+  "other_flagged_positions": []
+ },
+ "position": {
+  "outcome_bought": "Yes",
+  "cost_usd": 1000.0,
+  "average_price": 0.14,
+  "payout_at_resolution_usd": 7143.0,
+  "profit_usd": 6143.0,
+  "first_buy_at": "2026-10-16 00:58 UTC",
+  "hours_first_buy_before_public": 0.5,
+  "bought_losing_side_usd": 0.0
+ },
+ "score": {
+  "total": 57.5,
+  "points_by_signal": {
+   "Pre-resolution timing": 20.1,
+   "Low-probability conviction": 3.5,
+   "Fresh / single-purpose wallet": 5.5,
+   "Size anomaly": 15.0,
+   "Category prior": 13.5,
+   "Hedge adjustment": -0.0
+  },
+  "one_line_explanation": "Score 58: $1,000 on 'Yes' at avg 0.14, 100% of it in the 72 h before the outcome became public — largest driver: pre-resolution timing (+20); paid out $7,143."
+ },
+ "signals": [
+  {
+   "signal": "Pre-resolution timing",
+   "score_0_to_1": 0.8,
+   "points": 20.1,
+   "reason": "100% of the $1,000 position was bought in the 72 h before the outcome became public (100% within 24 h, 100% within 1 h), at an average price of 0.14.",
+   "evidence": {
+    "position_notional": 1000.0,
+    "notional_within_1h": 1000.0,
+    "notional_within_24h": 1000.0,
+    "notional_within_72h": 1000.0,
+    "share_within_1h": 1.0,
+    "share_within_24h": 1.0,
+    "share_within_72h": 1.0,
+    "avg_price_within_72h": 0.14,
+    "weighted_avg_lead_hours": 0.49,
+    "certainty_at": "2026-10-16 01:28",
+    "raw_timing_value": 0.602
+   }
+  },
+  {
+   "signal": "Low-probability conviction",
+   "score_0_to_1": 0.14,
+   "points": 3.5,
+   "reason": "Bought $1,000 of the winning outcome at an average price of 0.14 (≈14% implied chance) — 0.2% of the market's total volume; the position paid out $7,143 for a $6,143 profit.",
+   "evidence": {
+    "low_price_threshold": 0.3,
+    "low_price_notional": 1000.0,
+    "low_price_avg_price": 0.14,
+    "low_price_share_of_market_volume": 0.0023,
+    "market_volume": 440562.54,
+    "surprise_weighted_share": 0.0045,
+    "position_avg_price": 0.14,
+    "position_cost": 1000.0,
+    "position_payout": 7142.86,
+    "position_profit": 6142.86
+   }
+  },
+  {
+   "signal": "Fresh / single-purpose wallet",
+   "score_0_to_1": 0.27,
+   "points": 5.5,
+   "reason": "Account was 758 days old (venue join date) at its first buy here; it has traded 71 markets on the venue overall, and 100% of its buying in our data went into this market.",
+   "evidence": {
+    "account_age_days_at_first_buy": 758.29,
+    "first_seen_source": "venue_join_date",
+    "first_seen_at": "2024-09-17 18:00",
+    "markets_traded": 71,
+    "markets_traded_source": "venue_lifetime",
+    "share_of_account_buying_in_this_market": 1.0,
+    "account_dataset_buy_notional": 1000.0,
+    "part_scores": {
+     "age": 0.0,
+     "few_markets": 0.074,
+     "concentration": 1.0
+    }
+   }
+  },
+  {
+   "signal": "Size anomaly",
+   "score_0_to_1": 1.0,
+   "points": 15.0,
+   "reason": "The $1,000 position is 1,000× the typical position in this market ($1; top 4.3% of 1,244 positions); the account has too little other history to compare against.",
+   "evidence": {
+    "position_notional": 1000.0,
+    "market_typical_position": 1.0,
+    "multiple_of_market_typical": 1000.0,
+    "market_robust_z": 20.23,
+    "market_percentile": 0.9574,
+    "market_n_positions": 1244,
+    "account_other_positions": 0,
+    "account_median_other_position": null,
+    "multiple_of_account_typical": null,
+    "part_scores": {
+     "market": 1.0,
+     "own": null
+    }
+   }
+  },
+  {
+   "signal": "Category prior",
+   "score_0_to_1": 0.9,
+   "points": 13.5,
+   "reason": "Category 'corporate' has a high prior for non-public information: company insiders know of announcements, launches and deals before the public.",
+   "evidence": {
+    "category": "corporate",
+    "category_weight": 0.9
+   }
+  }
+ ],
+ "account_trades_in_market": [
+  {
+   "time": "2026-10-16 00:58 UTC",
+   "side": "buy",
+   "outcome": "Yes",
+   "price": 0.14,
+   "shares": 7143.0,
+   "usd": 1000.0,
+   "hours_before_public": 0.5
+  },
+  {
+   "time": "2026-10-16 01:22 UTC",
+   "side": "sell",
+   "outcome": "Yes",
+   "price": 0.741,
+   "shares": 3571.0,
+   "usd": 2645.0,
+   "hours_before_public": 0.1
+  },
+  {
+   "time": "2026-10-16 01:23 UTC",
+   "side": "sell",
+   "outcome": "Yes",
+   "price": 0.922,
+   "shares": 1786.0,
+   "usd": 1647.0,
+   "hours_before_public": 0.1
+  },
+  {
+   "time": "2026-10-16 01:23 UTC",
+   "side": "sell",
+   "outcome": "Yes",
+   "price": 0.877,
+   "shares": 1786.0,
+   "usd": 1566.0,
+   "hours_before_public": 0.1
+  }
+ ],
+ "market_price_path": [
+  {
+   "time": "2026-10-16 00:24 UTC",
+   "winner_price": 0.52
+  },
+  {
+   "time": "2026-10-16 00:25 UTC",
+   "winner_price": 0.64
+  },
+  {
+   "time": "2026-10-16 00:26 UTC",
+   "winner_price": 0.595
+  },
+  {
+   "time": "2026-10-16 00:27 UTC",
+   "winner_price": 0.55
+  },
+  {
+   "time": "2026-10-16 00:28 UTC",
+   "winner_price": 0.55
+  },
+  {
+   "time": "2026-10-16 00:30 UTC",
+   "winner_price": 0.57
+  },
+  {
+   "time": "2026-10-16 00:31 UTC",
+   "winner_price": 0.57
+  },
+  {
+   "time": "2026-10-16 00:33 UTC",
+   "winner_price": 0.49
+  },
+  {
+   "time": "2026-10-16 00:34 UTC",
+   "winner_price": 0.47
+  },
+  {
+   "time": "2026-10-16 00:35 UTC",
+   "winner_price": 0.502
+  },
+  {
+   "time": "2026-10-16 00:36 UTC",
+   "winner_price": 0.457
+  },
+  {
+   "time": "2026-10-16 00:38 UTC",
+   "winner_price": 0.517
+  },
+  {
+   "time": "2026-10-16 00:40 UTC",
+   "winner_price": 0.533
+  },
+  {
+   "time": "2026-10-16 00:43 UTC",
+   "winner_price": 0.5
+  },
+  {
+   "time": "2026-10-16 00:44 UTC",
+   "winner_price": 0.492
+  },
+  {
+   "time": "2026-10-16 00:47 UTC",
+   "winner_price": 0.46
+  },
+  {
+   "time": "2026-10-16 00:48 UTC",
+   "winner_price": 0.41
+  },
+  {
+   "time": "2026-10-16 00:49 UTC",
+   "winner_price": 0.071
+  },
+  {
+   "time": "2026-10-16 00:51 UTC",
+   "winner_price": 0.3
+  },
+  {
+   "time": "2026-10-16 00:52 UTC",
+   "winner_price": 0.31
+  },
+  {
+   "time": "2026-10-16 00:53 UTC",
+   "winner_price": 0.26
+  },
+  {
+   "time": "2026-10-16 00:54 UTC",
+   "winner_price": 0.25
+  },
+  {
+   "time": "2026-10-16 00:55 UTC",
+   "winner_price": 0.15
+  },
+  {
+   "time": "2026-10-16 00:56 UTC",
+   "winner_price": 0.112
+  },
+  {
+   "time": "2026-10-16 00:57 UTC",
+   "winner_price": 0.14
+  },
+  {
+   "time": "2026-10-16 00:58 UTC",
+   "winner_price": 0.14
+  },
+  {
+   "time": "2026-10-16 00:59 UTC",
+   "winner_price": 0.158
+  },
+  {
+   "time": "2026-10-16 01:00 UTC",
+   "winner_price": 0.09
+  },
+  {
+   "time": "2026-10-16 01:01 UTC",
+   "winner_price": 0.1
+  },
+  {
+   "time": "2026-10-16 01:02 UTC",
+   "winner_price": 0.1
+  },
+  {
+   "time": "2026-10-16 01:03 UTC",
+   "winner_price": 0.428
+  },
+  {
+   "time": "2026-10-16 01:04 UTC",
+   "winner_price": 0.214
+  },
+  {
+   "time": "2026-10-16 01:05 UTC",
+   "winner_price": 0.215
+  },
+  {
+   "time": "2026-10-16 01:06 UTC",
+   "winner_price": 0.62
+  },
+  {
+   "time": "2026-10-16 01:07 UTC",
+   "winner_price": 0.298
+  },
+  {
+   "time": "2026-10-16 01:08 UTC",
+   "winner_price": 0.39
+  },
+  {
+   "time": "2026-10-16 01:09 UTC",
+   "winner_price": 0.34
+  },
+  {
+   "time": "2026-10-16 01:10 UTC",
+   "winner_price": 0.82
+  },
+  {
+   "time": "2026-10-16 01:12 UTC",
+   "winner_price": 0.86
+  },
+  {
+   "time": "2026-10-16 01:13 UTC",
+   "winner_price": 0.87
+  },
+  {
+   "time": "2026-10-16 01:14 UTC",
+   "winner_price": 0.835
+  },
+  {
+   "time": "2026-10-16 01:15 UTC",
+   "winner_price": 0.89
+  },
+  {
+   "time": "2026-10-16 01:16 UTC",
+   "winner_price": 0.85
+  },
+  {
+   "time": "2026-10-16 01:17 UTC",
+   "winner_price": 0.81
+  },
+  {
+   "time": "2026-10-16 01:18 UTC",
+   "winner_price": 0.8
+  },
+  {
+   "time": "2026-10-16 01:19 UTC",
+   "winner_price": 0.8
+  },
+  {
+   "time": "2026-10-16 01:20 UTC",
+   "winner_price": 0.776
+  },
+  {
+   "time": "2026-10-16 01:21 UTC",
+   "winner_price": 0.78
+  },
+  {
+   "time": "2026-10-16 01:22 UTC",
+   "winner_price": 0.877
+  },
+  {
+   "time": "2026-10-16 01:23 UTC",
+   "winner_price": 0.89
+  },
+  {
+   "time": "2026-10-16 01:24 UTC",
+   "winner_price": 0.89
+  },
+  {
+   "time": "2026-10-16 01:25 UTC",
+   "winner_price": 0.891
+  },
+  {
+   "time": "2026-10-16 01:26 UTC",
+   "winner_price": 0.91
+  },
+  {
+   "time": "2026-10-16 01:27 UTC",
+   "winner_price": 0.98
+  },
+  {
+   "time": "2026-10-16 01:28 UTC",
+   "winner_price": 0.963
+  },
+  {
+   "time": "2026-10-16 01:29 UTC",
+   "winner_price": 0.98
+  },
+  {
+   "time": "2026-10-16 01:30 UTC",
+   "winner_price": 0.976
+  },
+  {
+   "time": "2026-10-16 01:31 UTC",
+   "winner_price": 0.976
+  },
+  {
+   "time": "2026-10-16 01:33 UTC",
+   "winner_price": 0.961
+  },
+  {
+   "time": "2026-10-16 01:34 UTC",
+   "winner_price": 0.962
+  },
+  {
+   "time": "2026-10-16 01:35 UTC",
+   "winner_price": 0.967
+  },
+  {
+   "time": "2026-10-16 01:36 UTC",
+   "winner_price": 0.976
+  },
+  {
+   "time": "2026-10-16 01:37 UTC",
+   "winner_price": 0.988
+  },
+  {
+   "time": "2026-10-16 01:38 UTC",
+   "winner_price": 0.989
+  },
+  {
+   "time": "2026-10-16 01:41 UTC",
+   "winner_price": 0.995
+  },
+  {
+   "time": "2026-10-16 01:43 UTC",
+   "winner_price": 0.991
+  },
+  {
+   "time": "2026-10-16 01:44 UTC",
+   "winner_price": 0.992
+  },
+  {
+   "time": "2026-10-16 01:46 UTC",
+   "winner_price": 0.997
+  },
+  {
+   "time": "2026-10-16 01:48 UTC",
+   "winner_price": 0.994
+  },
+  {
+   "time": "2026-10-16 01:51 UTC",
+   "winner_price": 0.997
+  },
+  {
+   "time": "2026-10-16 01:54 UTC",
+   "winner_price": 0.995
+  },
+  {
+   "time": "2026-10-16 01:56 UTC",
+   "winner_price": 0.995
+  },
+  {
+   "time": "2026-10-16 01:58 UTC",
+   "winner_price": 0.995
+  },
+  {
+   "time": "2026-10-16 01:59 UTC",
+   "winner_price": 0.995
+  },
+  {
+   "time": "2026-10-16 02:02 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:03 UTC",
+   "winner_price": 0.996
+  },
+  {
+   "time": "2026-10-16 02:05 UTC",
+   "winner_price": 0.996
+  },
+  {
+   "time": "2026-10-16 02:11 UTC",
+   "winner_price": 0.996
+  },
+  {
+   "time": "2026-10-16 02:12 UTC",
+   "winner_price": 0.996
+  },
+  {
+   "time": "2026-10-16 02:15 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:32 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:38 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 02:42 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:47 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 02:48 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:51 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:52 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:53 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-10-16 02:55 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 03:05 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 03:07 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 03:08 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-10-16 03:09 UTC",
+   "winner_price": 0.999
+  }
+ ],
+ "market_context": {
+  "other_accounts_buying_winner_over_min_in_72h_before_public": 37,
+  "all_winner_buying_in_72h_before_public_usd": 303181.0,
+  "this_account_share_of_that_buying": 0.003
+ },
+ "data_limitations": [
+  "No news or announcement feed is included: we cannot see whether public information appeared before the trades.",
+  "The time the outcome became public is estimated from market prices (the winner never again traded below 0.95), not from a verified announcement time.",
+  "The wallet is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
+  "Account history covers the sample of markets loaded for this demo, plus the venue's public profile statistics.",
+  "Only trades executed on this venue are visible; positions held elsewhere are unknown."
+ ]
+}

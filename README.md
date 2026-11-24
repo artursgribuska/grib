@@ -15,9 +15,26 @@ a case file. This demo runs on **public Polymarket data only**.
 3. `uv run python -m ingest.run` — downloads ~200 recently resolved markets and all their trades into `data/integrity.duckdb` (≈20 min first time; cached afterwards)
 4. `uv run python -m ingest.enrich` — fetches public wallet facts (join date, lifetime markets) for candidate wallets (≈12 min first time)
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
-6. `uv run pytest` — run the tests
+6. Put your Anthropic API key in the environment (`export ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`)
+7. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
+8. `uv run pytest` — run the tests
 
-More steps are added as milestones land (case files, dashboard).
+More steps are added as milestones land (dashboard).
+
+## Case files
+
+For each alert, `cases/bundle.py` builds an **evidence bundle** (JSON): market facts, account
+facts (truncated ID only), the account's trades, the market's price path, every signal's
+reason and numbers, market context and the data limitations. The model
+(`claude-sonnet-5-5`) sees only this bundle and returns a structured case file: summary,
+timeline, evidence per signal, innocent explanations considered, risk rating with
+confidence, next steps and open questions.
+
+Two automatic checks run on every draft (`cases/numbers.py`):
+- **Number check** — every number in the text must appear in the bundle (rounding and
+  0–1 shares written as percentages are allowed). Invented figures are sent back to the
+  model once; if they persist the case file is flagged "needs attention".
+- **Language check** — no accusatory terms ("insider", "guilty", "fraud"…) and no full wallet addresses.
 
 ## How an alert is scored
 
@@ -48,7 +65,8 @@ Alerts are **anomalous activity warranting review**, not findings of wrongdoing.
 | `schema/` | The venue-agnostic canonical schema and the Polymarket → canonical mapper |
 | `signals/` | One module per detection signal; each returns a score, a reason and evidence |
 | `scoring/` | Feature tables (from canonical tables only) and the weighted score |
-| `cases/`, `app/`, `eval/` | Later milestones |
+| `cases/` | Evidence bundles, the case-file prompt, the LLM writer and the number/language checks |
+| `app/`, `eval/` | Later milestones |
 
 **Canonical schema** — every signal reads only these tables, so an operator's CSV can be
 mapped in later without changing the engine:

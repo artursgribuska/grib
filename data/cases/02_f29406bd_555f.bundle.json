@@ -1,0 +1,477 @@
+{
+ "case_id": "0xf29406bd:0x5abfa4149288def675094d04d06e15c7602b555f",
+ "generated_at": "2026-11-24 10:14 UTC",
+ "venue": "polymarket",
+ "disclaimer": "Demo built on public data. This is anomalous activity warranting review, based on statistical signals. It is not a legal finding and does not identify or accuse any person.",
+ "method": {
+  "unit_of_review": "one account's buying of the eventual winning outcome in one market, before the outcome became public",
+  "public_certainty_rule": "first trade after which the winning outcome never again traded below 0.95",
+  "minimum_position_usd": 1000,
+  "timing_windows_hours": [
+   1,
+   24,
+   72
+  ],
+  "low_price_threshold": 0.3,
+  "max_points_per_signal": {
+   "Pre-resolution timing": 25,
+   "Low-probability conviction": 25,
+   "Fresh / single-purpose wallet": 20,
+   "Size anomaly": 15,
+   "Category prior": 15
+  },
+  "max_hedge_deduction": 20.0,
+  "review_threshold_score": 50.0
+ },
+ "market": {
+  "question": "Will Jensen Huang rejoin NVIDIA by March 31, 2027?",
+  "category": "personnel",
+  "winning_outcome": "Yes",
+  "opened_at": "2026-11-19 20:23 UTC",
+  "outcome_became_public_at": "2026-11-23 13:58 UTC",
+  "officially_resolved_at": "2026-11-23 16:01 UTC",
+  "hours_between_public_and_resolution": 2.1,
+  "market_volume_usd": 110706.0,
+  "accounts_trading": 243,
+  "positions_before_public": 217
+ },
+ "account": {
+  "display_id": "0x5abf…555f",
+  "first_seen_at": "2026-08-09 11:38 UTC",
+  "first_seen_source": "venue_join_date",
+  "lifetime_markets_traded_on_venue": 5,
+  "lifetime_biggest_win_usd": 16472.0,
+  "markets_in_demo_sample": 1,
+  "total_buying_in_demo_sample_usd": 3823.0,
+  "other_flagged_positions": []
+ },
+ "position": {
+  "outcome_bought": "Yes",
+  "cost_usd": 3823.0,
+  "average_price": 0.23,
+  "payout_at_resolution_usd": 16663.0,
+  "profit_usd": 12840.0,
+  "first_buy_at": "2026-11-20 23:00 UTC",
+  "hours_first_buy_before_public": 63.0,
+  "bought_losing_side_usd": 0.0
+ },
+ "score": {
+  "total": 71.4,
+  "points_by_signal": {
+   "Pre-resolution timing": 19.3,
+   "Low-probability conviction": 20.4,
+   "Fresh / single-purpose wallet": 8.9,
+   "Size anomaly": 7.8,
+   "Category prior": 15.0,
+   "Hedge adjustment": -0.0
+  },
+  "one_line_explanation": "Score 71: $3,823 on 'Yes' at avg 0.23, 100% of it in the 72 h before the outcome became public — largest driver: low-probability conviction (+20); paid out $16,663."
+ },
+ "signals": [
+  {
+   "signal": "Pre-resolution timing",
+   "score_0_to_1": 0.77,
+   "points": 19.3,
+   "reason": "100% of the $3,823 position was bought in the 72 h before the outcome became public (0% within 24 h, 0% within 1 h), at an average price of 0.23.",
+   "evidence": {
+    "position_notional": 3822.8,
+    "notional_within_1h": 0.0,
+    "notional_within_24h": 0.0,
+    "notional_within_72h": 3822.8,
+    "share_within_1h": 0.0,
+    "share_within_24h": 0.0,
+    "share_within_72h": 1.0,
+    "avg_price_within_72h": 0.2294,
+    "weighted_avg_lead_hours": 62.96,
+    "certainty_at": "2026-11-23 13:58",
+    "raw_timing_value": 0.5779
+   }
+  },
+  {
+   "signal": "Low-probability conviction",
+   "score_0_to_1": 0.82,
+   "points": 20.4,
+   "reason": "Bought $3,823 of the winning outcome at an average price of 0.23 (≈23% implied chance) — 3.5% of the market's total volume; the position paid out $16,663 for a $12,840 profit.",
+   "evidence": {
+    "low_price_threshold": 0.3,
+    "low_price_notional": 3822.8,
+    "low_price_avg_price": 0.2294,
+    "low_price_share_of_market_volume": 0.0345,
+    "market_volume": 110706.36,
+    "surprise_weighted_share": 0.0508,
+    "position_avg_price": 0.2294,
+    "position_cost": 3822.8,
+    "position_payout": 16663.09,
+    "position_profit": 12840.29
+   }
+  },
+  {
+   "signal": "Fresh / single-purpose wallet",
+   "score_0_to_1": 0.45,
+   "points": 8.9,
+   "reason": "Account was 103 days old (venue join date) at its first buy here; it has traded 5 markets on the venue overall, and 100% of its buying in our data went into this market.",
+   "evidence": {
+    "account_age_days_at_first_buy": 103.47,
+    "first_seen_source": "venue_join_date",
+    "first_seen_at": "2026-08-09 11:38",
+    "markets_traded": 5,
+    "markets_traded_source": "venue_lifetime",
+    "share_of_account_buying_in_this_market": 1.0,
+    "account_dataset_buy_notional": 3822.8,
+    "part_scores": {
+     "age": 0.0,
+     "few_markets": 0.651,
+     "concentration": 1.0
+    }
+   }
+  },
+  {
+   "signal": "Size anomaly",
+   "score_0_to_1": 0.52,
+   "points": 7.8,
+   "reason": "The $3,823 position is 191× the typical position in this market ($20; top 1.9% of 217 positions); the account has too little other history to compare against.",
+   "evidence": {
+    "position_notional": 3822.8,
+    "market_typical_position": 20.0,
+    "multiple_of_market_typical": 191.1,
+    "market_robust_z": 2.56,
+    "market_percentile": 0.9815,
+    "market_n_positions": 217,
+    "account_other_positions": 0,
+    "account_median_other_position": null,
+    "multiple_of_account_typical": null,
+    "part_scores": {
+     "market": 0.519,
+     "own": null
+    }
+   }
+  },
+  {
+   "signal": "Category prior",
+   "score_0_to_1": 1.0,
+   "points": 15.0,
+   "reason": "Category 'personnel' has a high prior for non-public information: appointments, resignations and hires are decided by a few people before any announcement.",
+   "evidence": {
+    "category": "personnel",
+    "category_weight": 1.0
+   }
+  }
+ ],
+ "account_trades_in_market": [
+  {
+   "time": "2026-11-20 23:00 UTC",
+   "side": "buy",
+   "outcome": "Yes",
+   "price": 0.229,
+   "shares": 16663.0,
+   "usd": 3823.0,
+   "hours_before_public": 63.0
+  }
+ ],
+ "market_price_path": [
+  {
+   "time": "2026-11-20 07:33 UTC",
+   "winner_price": 0.23
+  },
+  {
+   "time": "2026-11-20 10:05 UTC",
+   "winner_price": 0.15
+  },
+  {
+   "time": "2026-11-20 12:07 UTC",
+   "winner_price": 0.14
+  },
+  {
+   "time": "2026-11-20 16:41 UTC",
+   "winner_price": 0.12
+  },
+  {
+   "time": "2026-11-20 17:42 UTC",
+   "winner_price": 0.14
+  },
+  {
+   "time": "2026-11-20 18:12 UTC",
+   "winner_price": 0.156
+  },
+  {
+   "time": "2026-11-20 18:43 UTC",
+   "winner_price": 0.15
+  },
+  {
+   "time": "2026-11-20 19:44 UTC",
+   "winner_price": 0.16
+  },
+  {
+   "time": "2026-11-20 20:45 UTC",
+   "winner_price": 0.176
+  },
+  {
+   "time": "2026-11-20 21:15 UTC",
+   "winner_price": 0.171
+  },
+  {
+   "time": "2026-11-20 21:46 UTC",
+   "winner_price": 0.14
+  },
+  {
+   "time": "2026-11-20 22:16 UTC",
+   "winner_price": 0.166
+  },
+  {
+   "time": "2026-11-20 22:47 UTC",
+   "winner_price": 0.17
+  },
+  {
+   "time": "2026-11-20 23:47 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-21 00:18 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-21 01:19 UTC",
+   "winner_price": 0.16
+  },
+  {
+   "time": "2026-11-21 01:49 UTC",
+   "winner_price": 0.18
+  },
+  {
+   "time": "2026-11-21 02:50 UTC",
+   "winner_price": 0.18
+  },
+  {
+   "time": "2026-11-21 06:54 UTC",
+   "winner_price": 0.17
+  },
+  {
+   "time": "2026-11-21 08:56 UTC",
+   "winner_price": 0.17
+  },
+  {
+   "time": "2026-11-21 09:26 UTC",
+   "winner_price": 0.18
+  },
+  {
+   "time": "2026-11-21 10:58 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-21 11:28 UTC",
+   "winner_price": 0.18
+  },
+  {
+   "time": "2026-11-21 11:59 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-21 13:00 UTC",
+   "winner_price": 0.18
+  },
+  {
+   "time": "2026-11-21 13:30 UTC",
+   "winner_price": 0.194
+  },
+  {
+   "time": "2026-11-21 14:01 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-21 15:01 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-21 15:32 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-21 19:05 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-21 19:36 UTC",
+   "winner_price": 0.217
+  },
+  {
+   "time": "2026-11-21 20:06 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-21 22:38 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-22 01:11 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-22 01:41 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-22 04:14 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-22 05:45 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-22 07:47 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-22 08:17 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-22 08:48 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-22 11:20 UTC",
+   "winner_price": 0.19
+  },
+  {
+   "time": "2026-11-22 13:22 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-22 15:54 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-22 16:25 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-22 16:55 UTC",
+   "winner_price": 0.2
+  },
+  {
+   "time": "2026-11-22 17:26 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-22 17:56 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-22 19:28 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-22 20:29 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-22 23:01 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-23 00:02 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 00:32 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 01:33 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 02:04 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 02:34 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 03:05 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 03:35 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 04:06 UTC",
+   "winner_price": 0.21
+  },
+  {
+   "time": "2026-11-23 04:36 UTC",
+   "winner_price": 0.22
+  },
+  {
+   "time": "2026-11-23 05:06 UTC",
+   "winner_price": 0.23
+  },
+  {
+   "time": "2026-11-23 05:37 UTC",
+   "winner_price": 0.24
+  },
+  {
+   "time": "2026-11-23 08:09 UTC",
+   "winner_price": 0.24
+  },
+  {
+   "time": "2026-11-23 08:40 UTC",
+   "winner_price": 0.24
+  },
+  {
+   "time": "2026-11-23 09:10 UTC",
+   "winner_price": 0.24
+  },
+  {
+   "time": "2026-11-23 10:42 UTC",
+   "winner_price": 0.25
+  },
+  {
+   "time": "2026-11-23 11:12 UTC",
+   "winner_price": 0.25
+  },
+  {
+   "time": "2026-11-23 12:13 UTC",
+   "winner_price": 0.24
+  },
+  {
+   "time": "2026-11-23 12:43 UTC",
+   "winner_price": 0.25
+  },
+  {
+   "time": "2026-11-23 13:14 UTC",
+   "winner_price": 0.25
+  },
+  {
+   "time": "2026-11-23 13:44 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-11-23 14:15 UTC",
+   "winner_price": 0.998
+  },
+  {
+   "time": "2026-11-23 14:45 UTC",
+   "winner_price": 0.999
+  },
+  {
+   "time": "2026-11-23 15:16 UTC",
+   "winner_price": 0.999
+  }
+ ],
+ "market_context": {
+  "other_accounts_buying_winner_over_min_in_72h_before_public": 5,
+  "all_winner_buying_in_72h_before_public_usd": 18820.0,
+  "this_account_share_of_that_buying": 0.203
+ },
+ "data_limitations": [
+  "No news or announcement feed is included: we cannot see whether public information appeared before the trades.",
+  "The time the outcome became public is estimated from market prices (the winner never again traded below 0.95), not from a verified announcement time.",
+  "The wallet is pseudonymous: there is no KYC, identity, or funding-source information in this bundle.",
+  "Account history covers the sample of markets loaded for this demo, plus the venue's public profile statistics.",
+  "Only trades executed on this venue are visible; positions held elsewhere are unknown."
+ ]
+}
