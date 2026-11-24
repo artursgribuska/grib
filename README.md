@@ -151,9 +151,9 @@ for categories where non-public information is plausible, with the current eight
 
 | Planted | Top 1% of ~7,000 positions | At/above review threshold | Median score |
 |---|---|---|---|
-| informed | 82–90% | 39–60% | 47–51 |
-| early | 22–39% | 4–14% | 32–34 |
-| flipper | 4–14% | 0% | 18–19 |
+| informed | 82–84% | 42–60% | 48–51 |
+| early | 22–39% | 7–11% | 32–34 |
+| flipper | 4–14% | 0–3% | 19–21 |
 
 Adding price leadership and track record (`uv run python -m eval.backtest --compare`) raised
 informed trades in the top 1% from 80–82% to 82–90% while pushing long-held "early" trades at
@@ -165,6 +165,44 @@ informed buyer from the crowd. That is a deliberate trade-off, not a bug. Detect
 falls off sharply above an entry price of 0.30 (0% caught at 0.45–0.60). Tapering the
 low-price cutoff to 0.60 lifted the at-threshold rate but cut the top-1% rate (81% → 74%)
 by also lifting real positions, so it was not adopted.
+
+## Validation on publicly reported cases
+
+Planted trades only show the engine finds what we told it to look for. `eval/known_cases.py`
+runs the **unchanged engine** on markets that were the subject of public reports of suspected
+trading on non-public information, placed *inside* the ordinary universe so case positions
+must out-rank everyday ones. The engine sees trades only — no names, times or wallets.
+
+    uv run python -m eval.known_cases     # ≈15 min first time; report in data/known_cases/report.md
+
+| Case (public reports) | Markets | Best rank of 8,249 | Alerts at threshold |
+|---|---|---|---|
+| Maduro removed from power, January 2026 — "Maduro out by January 31" | 1 | **1** | 4 |
+| 2025 Nobel Peace Prize — winner's price jumped from 3¢ to 75¢ ten hours before the announcement | 1 | **4** | 3 |
+| Google Year in Search 2025 — ten "most searched" list events, all markets | 487 | **7** | 1 |
+
+12 of the top 25 alerts come from case markets, which hold 16% of positions. The reports are
+allegations and the accounts are pseudonymous: this is evidence about the engine, not about
+any person.
+
+**What the study changed.** The first run missed most of the Nobel case, and the reasons were
+engine flaws, now fixed (each checked against the planted-trade backtest, which stayed at parity):
+
+- The leak frenzy made the market's own money "late", so timing scored ~0. A market's lateness
+  baseline is now capped at the 90th percentile for markets of its age: a 93-day market doing
+  96% of its business in its last 72 hours is itself anomalous.
+- The account whose buying moved the price was not credited for it. Price leadership now
+  includes *move initiation*: the share of the buying that took the price halfway up the
+  market's sharpest pre-public run-up.
+- Selling into that run-up at a large gain was penalised as an exit; the waiver applies only to
+  move initiators (waiving it for everyone lifted flippers in the backtest).
+- Long-shot conviction was measured against total volume, including post-news frenzies that
+  dwarf the market beforehand (d4vd: $1.6M before, $6.9M total). It now uses pre-public volume.
+
+**Limits.** Three cases is anecdote-sized evidence, chosen because they were reported. Where
+the public reports describe many modest wins across sibling markets (Google), the engine is
+weaker: no single position stands out, and the account most often named as a cheap d4vd buyer
+in our data is a very large, diversified trader whose positions look like market-making.
 
 ## How it is organised
 
