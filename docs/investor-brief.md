@@ -1,0 +1,126 @@
+# Integrity Analyst: investor brief (draft)
+
+*Draft, 24 November 2026. Market facts are from the sources in `docs/market-notes.md`.
+Product facts and numbers are reproducible from this repository. Anything marked
+**[decide]** is an open choice for the founders, not a claim.*
+
+## The problem
+
+Prediction markets have turned into a large, regulated business, and insider trading is
+now the main risk they face.
+
+- **Volume.** Kalshi and Polymarket together traded about $50B in July 2026. Across
+  eight exchanges the total reached $120B in October 2026.
+- **Regulatory duty.** A CFTC advisory in February 2026 says exchanges have an
+  *independent duty* to conduct surveillance and enforce rules against prohibited
+  practices. The CFTC filed its first insider-trading case on event contracts in April
+  2026, on Maduro-related contracts.
+- **The work is piling up.** Kalshi referred 32 suspected cases in a single quarter and
+  calls insider monitoring its "No. 1 priority". Polymarket flagged more than 90 traders
+  in 2026. Every one of those cases needs an analyst to write it up.
+- **It is hard.** Accounts are pseudonymous, so regulators cannot check trades against
+  lists of insiders the way they do in equities. The evidence has to come from the trading
+  itself.
+
+## What we built
+
+An AI compliance analyst. It reads a venue's trades, finds the positions that look like
+trading on non-public information, and writes the first draft of the case file. A human
+reviewer decides.
+
+1. **Detection: eight signals, every point explained.**
+   - *Behaviour:* timing relative to the market's own rhythm, conviction on long shots,
+     price leadership (including who started a pre-public price run-up), coordinated entry
+     by fresh accounts, and a long-shot track record across markets.
+   - *Context:* account freshness, position size, and how leak-prone the market category is.
+   - *Deductions:* hedges, and positions sold before the news broke.
+2. **Evidence.**
+   - Account funding on-chain: shared funders and direct transfers, with bridges,
+     exchanges and spam filtered out.
+   - News timestamps from GDELT, to test the strongest innocent explanation ("was it
+     already in the news?").
+3. **AI case files.**
+   - Each one includes a summary, timeline, evidence, at least four innocent explanations,
+     a risk rating with confidence, next steps and open questions.
+   - Every number in a case file is checked against the evidence. Language is checked for
+     accusation. Wallets are always truncated.
+   - The risk rating starts from fixed rules. The model must name a fact to depart from
+     them.
+4. **Workflow.**
+   - A one-command daily pipeline that only rewrites case files whose evidence changed.
+   - A dashboard with review decisions and an append-only audit trail.
+   - Per-signal precision computed from reviewer decisions.
+   - A run digest for email or chat.
+5. **Works beyond Polymarket.** A loader takes an operator's own bet export (odds and
+   stake) into the same engine.
+
+## Proof
+
+| Evidence | Result |
+|---|---|
+| Publicly reported episodes, engine unchanged and given trades only, ranked among 8,249 ordinary positions | Maduro (January 2026): **#1**. Nobel Peace Prize 2025: **#4**. Google Year in Search 2025 (487 markets): **#7**. 12 of the top 25 alerts came from case markets that hold 16% of positions |
+| Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
+| Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
+| Engineering | 91 automated tests. The full pipeline reruns in minutes from cache |
+
+**What the validation changed.** On its first run, the engine missed most of the Nobel
+case. The study found four real flaws in it. Each was fixed and re-checked against the
+planted-trade backtest. This is how we intend to keep improving: on real cases, with the
+regressions measured.
+
+**Honest limits.** Three public cases is still anecdote-sized evidence. Sports markets and
+5-minute crypto markets are a blind spot by design, because everyone trades late there.
+Funding history for older wallets needs a paid archive node. The engine gives scores and
+drafts, not findings: a human decides every case.
+
+## Who buys it
+
+**Primary customers.** Kalshi (Solidus Labs) and Polymarket (Chainalysis PolyGraph) already
+have vendors. A second tier of venues now has the same surveillance duty and is newer to it:
+
+- DraftKings Predictions
+- FanDuel Predicts
+- Fanatics Markets
+- Crypto.com, Gemini, Novig, Underdog, PrizePicks
+- a planned Robinhood exchange
+
+Many of these are sportsbooks, whose data is odds and stakes. That is the format the
+operator loader already takes.
+
+**Secondary customers:**
+- Compliance and audit firms that serve these venues.
+- Regulators and investigative journalists, as a research product built on public data.
+  This one needs care, given the pseudonymity issues above.
+
+## How we differ from the incumbents
+
+The incumbents sell detection. We sell the **analyst's output**: a defensible draft case
+file with every number checked, innocent explanations weighed, and a rule-based starting
+rating, plus validation on real cases. That targets the expensive part of the job, which
+is analyst time per case.
+
+To confirm in customer calls: how much of a compliance team's time goes into writing cases
+rather than finding them.
+
+## Business model **[decide]**
+
+These are options to test with customers, not claims:
+
+- An annual licence per venue, tiered by monthly volume.
+- A pilot priced per case file.
+- A public-data "integrity index" offered as marketing and a research product.
+
+## Next 6 months **[decide priorities]**
+
+1. **Design partners.** Two second-tier venues running it on their own data, with
+   reviewer decisions feeding the precision statistics.
+2. **More real cases.** Extend the known-cases set as enforcement actions become public,
+   with each case checked like the ones above.
+3. **Data coverage.** An archive node for older wallet funding. Wire, social and official
+   release sources alongside GDELT.
+4. **Production hardening.** Scheduled runs, access control, and data retention aligned
+   with CFTC record-keeping.
+
+## The ask **[decide]**
+
+Amount, use of funds and team to be filled in by the founders.
