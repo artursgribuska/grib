@@ -18,10 +18,13 @@ Open `data/known_cases/dashboard/index.html` and look at the Nobel Peace Prize 2
   price leadership.
 - Expand the alert to show the reasons: the account bought $43k of the winner starting at
   22:42 UTC, ten hours before the announcement, and did most of the buying that took the
-  price from 3¢ to 75¢.
+  price from 3¢ to 75¢. The case file adds that the account was first seen at 21:26 UTC,
+  about an hour before its first buy.
 - Make the key point: the engine was told nothing about this case. It ranked this position
   #4 of 8,249, among ordinary markets.
-- Then the Maduro alert, which ranked #1.
+- Then the Maduro alert, which ranked #1. The case writer moved it from the rule-based
+  Medium up to High and named its facts: 5 other flagged wallets on the event, and 8
+  low-history buyers of the same long shot within 24 h.
 
 ## 3. The case file (90 s)
 
