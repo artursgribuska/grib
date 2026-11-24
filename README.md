@@ -3,7 +3,14 @@
 An AI compliance analyst for betting operators and prediction-market venues. It watches
 trading activity, flags **anomalous activity warranting review** (e.g. large, early,
 confident bets on the eventual winner), scores it with explainable signals and writes
-a case file. This demo runs on **public Polymarket data only**.
+a case file. This demo runs on **public Polymarket data**, and on an operator's own bet
+export through the same engine.
+
+**Does it work?** Run blind on markets behind publicly reported suspected-leak episodes, the
+unchanged engine ranked them **#1** (Maduro, January 2026), **#4** (Nobel Peace Prize 2025) and
+**#7** (Google Year in Search 2025) among 8,249 ordinary positions; on planted trades, 82–84% of
+informed buys land in the top 1%. See *Validation* below, `docs/demo.md` for a five-minute
+walkthrough and `docs/investor-brief.md` for the business case.
 
 > **Disclaimer:** demo built on public data. Alerts are statistical signals, not legal
 > findings, and do not identify or accuse any person. Wallets are pseudonymous.
@@ -12,7 +19,7 @@ a case file. This demo runs on **public Polymarket data only**.
 
 **Day to day:** `uv run python -m pipeline` runs everything below in one go and is safe to repeat
 (e.g. daily): new markets are added, caches are reused, and AI case files are only written for
-alerts that are new or whose score changed. Then open `data/dashboard/index.html`, review alerts,
+alerts that are new or whose evidence changed. Each run writes a digest to `data/digest/latest.md`. Then open `data/dashboard/index.html`, review alerts,
 and record decisions (see *Reviewing alerts*). Step by step, first time:
 
 1. Install [uv](https://docs.astral.sh/uv/): `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -20,11 +27,11 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 3. `uv run python -m ingest.run` — downloads ~200 recently resolved markets and all their trades into `data/integrity.duckdb` (≈20 min first time; cached afterwards)
 4. `uv run python -m ingest.enrich` — fetches public wallet facts (join date, lifetime markets) for candidate wallets (≈12 min first time)
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
-6. `uv run python -m ingest.funding`, then `uv run python -m scoring.run` again — optional: scans on-chain USDC deposits into flagged wallets and their entry-cohort peers (Polygon public RPC, no key; ≈10 min; `--rescan` to redo) so scoring can see shared funders
+6. `uv run python -m ingest.funding`, then `uv run python -m scoring.run` again — optional: scans on-chain USDC / pUSD deposits into flagged wallets and their entry-cohort peers (Polygon public RPC, no key; ≈10 min; `--rescan` to redo) so scoring can see shared funders
 7. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
 8. `uv run python -m ingest.news` — optional: searches GDELT for news about each alerted market (needs the key; ≈1 min per 10 markets)
 9. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
-10. `uv run python -m eval.backtest --markets 200 --seed 1` — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
+10. `uv run python -m eval.backtest --markets 200 --seed 1` (and `uv run python -m eval.known_cases`) — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
 11. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
 12. `uv run pytest` — run the tests
 
@@ -42,7 +49,7 @@ with the public demo. Column definitions are in `ingest/csv_loader.py`; rows tha
 (bad timestamps, odds ≤ 1, unknown markets …) are counted and reported, not silently dropped.
 `examples/operator/` holds a synthetic sportsbook export (2,021 bets, 6 markets) with one planted
 pattern — two day-old accounts backing a 9.0 outsider in a CEO-appointment market hours before
-the announcement. The engine ranks those two accounts first (scores 85 and 83) and the case
+the announcement. The engine ranks those two accounts first (scores 79 and 77) and the case
 writer rates both High.
 
 ## Reviewing alerts
@@ -68,7 +75,8 @@ until there are 20 closed decisions and never changes weights by itself.
 
 For each alert, `cases/bundle.py` builds an **evidence bundle** (JSON): market facts, account
 facts (truncated ID only), the account's trades, the market's price path, every signal's
-reason and numbers, market context and the data limitations. The model
+reason and numbers, market and event context, funding and news evidence where available, a
+rule-based starting risk rating, and the data limitations. The model
 (`claude-sonnet-5-5`) sees only this bundle and returns a structured case file: summary,
 timeline, evidence per signal, innocent explanations considered, risk rating with
 confidence, next steps and open questions.
@@ -212,12 +220,15 @@ in our data is a very large, diversified trader whose positions look like market
 | `schema/` | The venue-agnostic canonical schema and the Polymarket → canonical mapper |
 | `signals/` | One module per detection signal; each returns a score, a reason and evidence |
 | `scoring/` | Feature tables (from canonical tables only) and the weighted score |
-| `eval/`   | Backtest: planted trades in an in-memory copy of the data |
-| `app/`    | Static HTML dashboard built from the database |
+| `eval/`   | Backtest (planted trades) and the known-cases study (publicly reported episodes) |
+| `app/`    | Static HTML dashboard and the analyst review loop (`app/review.py`) |
+| `pipeline.py` | One-command incremental run, run log and digest |
+| `examples/operator/` | Synthetic sportsbook export for the operator path |
+| `docs/` | Demo walkthrough, investor brief, market research notes |
 | `cases/` | Evidence bundles, the case-file prompt, the LLM writer and the number/language checks |
 
-**Canonical schema** — every signal reads only these tables, so an operator's CSV can be
-mapped in later without changing the engine:
+**Canonical schema** — every signal reads only these tables, which is how an operator's CSV
+(`ingest/csv_loader.py`) runs through the same engine:
 
 - `accounts(account_id, venue, first_seen_at, metadata_json)`
 - `markets(market_id, venue, question, category, opened_at, closes_at, resolved_at, winning_outcome, metadata_json)`
@@ -228,4 +239,9 @@ mapped in later without changing the engine:
 - Polymarket **Data API v2** (`https://data-api.polymarket.com/v2`, public): trades, wallet stats, price history.
 - Polymarket **Gamma API** (`https://gamma-api.polymarket.com`, public): market questions, tags, close time, final outcome.
 
-All responses are cached under `data/cache/` and requests are rate-limited (≤4 req/s).
+- Polygon **public RPC** (`polygon-bor-rpc.publicnode.com`, or `POLYGON_RPC_URL`): USDC / pUSD transfers into wallets (funding).
+- **GDELT DOC 2.0** (`api.gdeltproject.org`, public): news articles around alerted markets (covers roughly the last three months).
+- **Anthropic API**: case files, and news queries / headline relevance.
+
+All responses are cached under `data/cache/` and requests are rate-limited (≤4 req/s per host;
+GDELT 1 per 5 s).
