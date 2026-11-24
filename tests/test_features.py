@@ -40,7 +40,7 @@ def build_db():
     trades += [
         tr("slow", "insider", 6, "Yes", 0.15, 3_000),                 # holds to the end
         tr("slow", "flipper", 10, "Yes", 0.20, 3_000),                # sells out before public
-        tr("slow", "flipper", 3, "Yes", 0.40, 6_000, side="sell"),
+        tr("slow", "flipper", 3, "Yes", 0.21, 3_150, side="sell"),   # sells all 15,000 shares at about cost
         *[tr("slow", f"peer{i}", 8 + i, "Yes", 0.20, 500) for i in range(4)],   # fresh long-shot buyers
         tr("slow", "late", 1, "Yes", 0.97, 500),                       # outcome becomes public
     ]
@@ -83,7 +83,7 @@ def test_position_sold_before_public_is_penalised(scored):
     _, res = scored
     flip, ins = res[("slow", "flipper")], res[("slow", "insider")]
     assert flip.ctx.exited_ratio == pytest.approx(1.0)
-    assert flip.contributions["exit_adjustment"] == pytest.approx(-30)
+    assert flip.contributions["exit_adjustment"] == pytest.approx(-30, abs=2)   # sold at ~cost: (almost) full deduction
     assert ins.contributions["exit_adjustment"] == 0
     assert flip.score < ins.score - 25
     lp = next(s for s in flip.signals if s.name == "low_probability_conviction").evidence

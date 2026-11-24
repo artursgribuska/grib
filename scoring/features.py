@@ -160,7 +160,61 @@ def build_features(con: duckdb.DuckDBPyConnection) -> None:
     GROUP BY 1, 2, 3;
     """)
     build_market_timing(con)
+    build_market_moves(con)
     build_funding_links(con)
+
+
+def build_market_moves(con: duckdb.DuckDBPyConnection) -> None:
+    """Per market, the sharpest run-up of the winner's price before public certainty, and
+    who did the buying that started it.
+
+    The run-up is the MOVE_WINDOW_H window (on an hourly grid of last prices) with the
+    largest rise from a start price ≤ MOVE_MAX_START, if the rise is ≥ MOVE_MIN_RISE.
+    "Initiating" buying = winner-side buys from the window start until the price first
+    reaches halfway between the start price and the window's peak — the buying that
+    moved the market, as opposed to buying that followed it.
+
+    Tables: market_moves (one row per market with a run-up), move_initiators (per account).
+    """
+    px = con.execute("""
+        SELECT w.market_id, time_bucket(INTERVAL 1 HOUR, w.ts) AS h, arg_max(w.winner_price, w.ts) AS p
+        FROM trades_w w JOIN market_state s USING (venue, market_id)
+        WHERE w.notional >= 5 AND w.ts < s.certainty_at
+        GROUP BY 1, 2 ORDER BY 1, 2""").df()
+    moves = []
+    for mid, g in px.groupby("market_id"):
+        g = g.set_index("h").p.resample("1h").last().ffill()
+        if len(g) < MOVE_WINDOW_H + 1:
+            continue
+        start = g.shift(MOVE_WINDOW_H)            # price at the end of the hour before the window
+        peak = g.rolling(MOVE_WINDOW_H).max()
+        rise = (peak - start).where(start <= MOVE_MAX_START)
+        if rise.dropna().empty or rise.max() < MOVE_MIN_RISE:
+            continue
+        end_h = rise.idxmax()
+        t0 = end_h - pd.Timedelta(hours=MOVE_WINDOW_H - 1)
+        moves.append({"market_id": mid, "t0": t0, "t1": end_h + pd.Timedelta(hours=1),
+                      "start_price": float(start[end_h]), "peak_price": float(peak[end_h]), "rise": float(rise[end_h])})
+    mv = pd.DataFrame(moves, columns=["market_id", "t0", "t1", "start_price", "peak_price", "rise"])
+    con.register("mv_df", mv)
+    con.execute("CREATE OR REPLACE TABLE market_moves AS SELECT * FROM mv_df")
+    con.unregister("mv_df")
+    con.execute("""
+    CREATE OR REPLACE TABLE move_initiators AS
+    WITH half AS (
+        SELECT m.market_id, m.t0, m.rise,
+               coalesce(min(w.ts) FILTER (WHERE w.winner_price >= m.start_price + m.rise / 2), any_value(m.t1)) AS t_half
+        FROM market_moves m JOIN trades_w w ON w.market_id = m.market_id AND w.ts >= m.t0 AND w.ts < m.t1
+        GROUP BY 1, 2, 3),
+    buys AS (
+        SELECT w.market_id, w.account_id, sum(w.notional) AS usd
+        FROM trades_w w JOIN half h ON w.market_id = h.market_id AND w.ts >= h.t0 AND w.ts <= h.t_half
+        WHERE w.side = 'buy' AND w.outcome = w.winning_outcome
+        GROUP BY 1, 2)
+    SELECT b.market_id, b.account_id, b.usd, b.usd / sum(b.usd) OVER (PARTITION BY b.market_id) AS share,
+           h.rise, h.t0, h.t_half
+    FROM buys b JOIN half h USING (market_id);
+    """)
 
 
 FUNDING_TABLES = ("wallet_funding_scans", "wallet_funding_transfers", "wallet_funding_senders")
@@ -240,6 +294,10 @@ def candidate_accounts(con: duckdb.DuckDBPyConnection) -> list[str]:
         "SELECT DISTINCT account_id FROM candidate_positions ORDER BY 1").fetchall()]
 
 
+# move initiation (part of signal 5): the sharpest pre-public run-up toward the winner
+MOVE_WINDOW_H = 2          # the run-up is measured over windows this long
+MOVE_MAX_START = 0.50      # ... starting while the winner still looked less likely than not
+MOVE_MIN_RISE = 0.20       # ... and rising at least this much
 LEAD_HORIZON_H = 24        # price leadership: where was the winner's price this long after the buy?
 LEAD_MARGIN_MIN = 5        # ... but never later than this many minutes before public certainty
 

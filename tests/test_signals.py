@@ -179,12 +179,19 @@ def test_coordinated_entry_uses_losing_side_as_control(win, lose, lo, hi):
 # ---- exits and the starting risk band --------------------------------------------------
 def test_exit_reduces_score_and_payout():
     held = ctx([buy(6, 0.10, 5_000)])
-    sold = ctx([buy(6, 0.10, 5_000)], sold_size_pre=50_000, sold_notional_pre=20_000)
+    sold = ctx([buy(6, 0.10, 5_000)], sold_size_pre=50_000, sold_notional_pre=5_000)          # sold at cost
     assert sold.exited_ratio == 1.0 and held.exited_ratio == 0.0
     assert score_position(sold).contributions["exit_adjustment"] == -30
     assert score_position(sold).score < score_position(held).score
     lp = low_probability_conviction(sold).evidence
-    assert lp["position_payout"] == 0 and lp["position_profit"] == 15_000
+    assert lp["position_payout"] == 0 and lp["position_profit"] == 0
+    # sold at 0.40 (bought at 0.10): an ordinary trader keeps the deduction …
+    gain = ctx([buy(6, 0.10, 5_000)], sold_size_pre=50_000, sold_notional_pre=20_000)
+    assert score_position(gain).contributions["exit_adjustment"] == -30
+    # … but the account that started the pre-public run-up and sold into it profited from it: no deduction
+    lead = ctx([buy(6, 0.10, 5_000)], sold_size_pre=50_000, sold_notional_pre=20_000,
+               move_rise=0.6, move_initiator_share=0.9, move_initiator_usd=4_000)
+    assert score_position(lead).contributions["exit_adjustment"] == 0
 
 
 def test_risk_band_rules():

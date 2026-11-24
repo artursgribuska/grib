@@ -34,7 +34,8 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
                h.dataset_markets, h.dataset_buy_notional, h.per_market,
                mt.avg_lateness, mt.share_within_72h, mt.lifetime_hours,
                ec.winner_peers, ec.loser_peers, ec.winner_peer_usd,
-               cf.linked_peers, cf.scan_status
+               cf.linked_peers, cf.scan_status,
+               mm.rise AS move_rise, mm.t0 AS move_t0, mi.share AS move_share, mi.usd AS move_usd
         FROM candidate_positions c
         JOIN market_state s USING (venue, market_id)
         LEFT JOIN market_size_dist d USING (venue, market_id)
@@ -42,7 +43,9 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
         LEFT JOIN account_history h USING (venue, account_id)
         LEFT JOIN market_timing mt USING (venue, market_id)
         LEFT JOIN entry_cohorts ec USING (venue, market_id, account_id)
-        LEFT JOIN cohort_funding cf USING (venue, market_id, account_id)""").df()
+        LEFT JOIN cohort_funding cf USING (venue, market_id, account_id)
+        LEFT JOIN market_moves mm USING (market_id)
+        LEFT JOIN move_initiators mi USING (market_id, account_id)""").df()
     buys = candidate_buys(con)
     legs: dict[tuple, list[Buy]] = defaultdict(list)
     for r in buys.itertuples(index=False):
@@ -83,6 +86,9 @@ def load_contexts(con: duckdb.DuckDBPyConnection) -> list[PositionContext]:
             cohort_winner_peer_usd=float(_f(r.winner_peer_usd) or 0),
             cohort_funding_links=int(_f(r.linked_peers) or 0),
             funding_scan_status=r.scan_status if isinstance(r.scan_status, str) else None,
+            move_rise=_f(r.move_rise), move_initiator_share=float(_f(r.move_share) or 0),
+            move_initiator_usd=float(_f(r.move_usd) or 0),
+            move_started_at=r.move_t0.to_pydatetime() if pd.notna(r.move_t0) else None,
             **_record(records.get((r.venue, r.market_id, r.account_id))),
         ))
     return out

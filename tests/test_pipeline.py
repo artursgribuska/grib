@@ -16,8 +16,6 @@ def test_pipeline_scores_records_run_and_writes_digest(tmp_path, monkeypatch):
     src.execute("DETACH out")
     monkeypatch.setattr(config, "DB_PATH", db)
     monkeypatch.setattr(config, "OUTPUT_DIR", tmp_path)
-    import app.build as build
-    monkeypatch.setattr(build, "OUT", tmp_path / "dashboard" / "index.html")
     import pipeline
     assert pipeline.main(["--skip-ingest", "--no-funding", "--no-news", "--no-cases"]) == 0
     con = duckdb.connect(str(db))

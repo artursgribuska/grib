@@ -28,7 +28,8 @@ WEIGHTS = {
     "long_shot_track_record": 0.06,
 }
 HEDGE_MAX_PENALTY = 20.0
-EXIT_MAX_PENALTY = 30.0    # a position sold out before the answer was public did not profit from it
+EXIT_MAX_PENALTY = 30.0    # a position sold out before the answer was public did not profit from the outcome …
+EXIT_GAIN_FULL = 0.30      # … unless it started a pre-public run-up and sold into it at a large gain
 ALERT_THRESHOLD = 50.0     # "warrants review" line used by the case-file step
 
 LABELS = {
@@ -66,12 +67,24 @@ def short_account(account_id: str) -> str:
     return f"{account_id[:6]}…{account_id[-4:]}" if len(account_id) > 12 else account_id
 
 
+def exit_gain(ctx: PositionContext) -> float:
+    """0..1: how much of the remaining upside the account captured by selling before the public moment,
+    counted only for accounts that initiated the market's pre-public run-up (see signals/price_leadership.py).
+    Ordinary traders selling into a drift towards certainty keep the full deduction: the backtest showed
+    waiving it for everyone lifted flippers. (avg sell − avg buy) / (1 − avg buy), full at EXIT_GAIN_FULL."""
+    from signals.price_leadership import initiation
+    if not ctx.sold_size_pre or ctx.vwap >= 1 or initiation(ctx) <= 0:
+        return 0.0
+    sell = ctx.sold_notional_pre / ctx.sold_size_pre
+    return max(0.0, min(1.0, (sell - ctx.vwap) / (1 - ctx.vwap) / EXIT_GAIN_FULL))
+
+
 def score_position(ctx: PositionContext) -> ScoredPosition:
     results = [fn(ctx) for fn in ALL_SIGNALS]
     contrib = {r.name: round(100 * WEIGHTS[r.name] * r.score, 2) for r in results}
     hedge_ratio = min(1.0, ctx.hedge_notional / ctx.buy_notional) if ctx.buy_notional else 0.0
     contrib["hedge_adjustment"] = round(-HEDGE_MAX_PENALTY * hedge_ratio, 2)
-    contrib["exit_adjustment"] = round(-EXIT_MAX_PENALTY * ctx.exited_ratio, 2)
+    contrib["exit_adjustment"] = round(-EXIT_MAX_PENALTY * ctx.exited_ratio * (1 - exit_gain(ctx)), 2)
     total = max(0.0, round(sum(contrib.values()), 1))
     return ScoredPosition(ctx, results, contrib, total, explain(ctx, results, contrib, total), hedge_ratio)
 

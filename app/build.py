@@ -73,7 +73,7 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
         for mid, ts, dom, title in con.execute("""SELECT market_id, seen_at, domain, title FROM news_articles
                                                   WHERE label IS NOT NULL ORDER BY seen_at""").fetchall():
             news.setdefault(mid, []).append((ts, dom, title))
-    bt_path = config.OUTPUT_DIR / "backtest.csv"
+    bt_path = config.OUTPUT_DIR / "backtest.csv"   # read at call time
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
     return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
                 stats=stats, events=events, wallets=wallets, backtest=backtest,
@@ -343,7 +343,8 @@ def render(d: dict) -> str:
 </main><script>{JS}</script></body></html>"""
 
 
-def build(con: duckdb.DuckDBPyConnection, top: int = 50, out=OUT):
+def build(con: duckdb.DuckDBPyConnection, top: int = 50, out=None):
+    out = out or config.OUTPUT_DIR / "dashboard" / "index.html"   # resolved now, not at import
     page = render(load(con, top))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page)

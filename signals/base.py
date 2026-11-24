@@ -57,6 +57,11 @@ class PositionContext:
     cohort_winner_peer_usd: float = 0.0
     cohort_funding_links: int = 0                # cohort peers sharing a personal funder with this wallet
     funding_scan_status: str | None = None       # None = never scanned; 'ok'; 'archive_unavailable'; ...
+    # the market's sharpest pre-public run-up toward the winner, and this account's part in starting it
+    move_rise: float | None = None               # price rise of the run-up (None = no run-up)
+    move_initiator_share: float = 0.0            # share of the buying that started it
+    move_initiator_usd: float = 0.0
+    move_started_at: datetime | None = None
     # long-shot bets by this account in OTHER markets of the dataset
     other_long_shots: int = 0
     other_long_shot_wins: int = 0
