@@ -115,14 +115,15 @@ def targets(con) -> pd.DataFrame:
         WHERE ps.score >= {MIN_ALERT_SCORE} GROUP BY 1 ORDER BY 1""").df()
 
 
-def gdelt(http: CachedClient, query: str, start: datetime, end: datetime) -> list[dict]:
+def gdelt(http: CachedClient, query: str, start: datetime, end: datetime) -> list[dict] | None:
+    """Articles, oldest first; None if GDELT could not be reached (≠ an empty result)."""
     params = {"query": query, "mode": "artlist", "format": "json", "maxrecords": MAX_ARTICLES, "sort": "dateasc",
               "startdatetime": start.strftime("%Y%m%d%H%M%S"), "enddatetime": end.strftime("%Y%m%d%H%M%S")}
     try:
         data = http.get_json(GDELT, params)
     except (ApiError, ValueError) as e:      # GDELT answers malformed queries with plain text
         log.warning("GDELT failed for %r: %s", query, str(e)[:120])
-        return []
+        return None
     out = []
     for a in (data or {}).get("articles", []) if isinstance(data, dict) else []:
         try:
@@ -158,6 +159,9 @@ def process_market(client, http, m) -> tuple[dict, list[dict]]:
         return row, []
     row["query"], row["reveal"] = q["query"], q["what_news_would_reveal_it"]
     arts = gdelt(http, q["query"], start, end)
+    if arts is None:   # not searched — must not read as "no news found"; retried next run
+        row["status"] = "news source unreachable"
+        return row, []
     row["n_articles"] = len(arts)
     if not arts:
         return row, []

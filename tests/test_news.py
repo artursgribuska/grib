@@ -100,3 +100,21 @@ def test_dashboard_flags_news_before_first_buy(con, tmp_path):
     news.run(con, FakeClaude(), FakeHttp([art(8, "X resigns")]))
     page = build(con, top=10, out=tmp_path / "i.html").read_text()
     assert "Relevant news before the first buy" in page and "X resigns" in page
+
+
+def test_unreachable_gdelt_is_not_reported_as_no_news(con):
+    from ingest.http import ApiError
+    from cases.bundle import build_bundle
+
+    class DownHttp:
+        def get_json(self, url, params):
+            raise ApiError("connection reset")
+    news.run(con, FakeClaude(), DownHttp())
+    assert con.execute("SELECT status FROM news_queries WHERE market_id='slow'").fetchone()[0] == "news source unreachable"
+    pid = con.execute("SELECT position_id FROM position_scores WHERE account_id='insider'").fetchone()[0]
+    b = build_bundle(con, pid)
+    assert b["news"]["status"] == "news source unreachable"
+    assert any(d.startswith("No news") for d in b["data_limitations"])     # limitation kept
+    # retried next run
+    res = news.run(con, FakeClaude(), FakeHttp([art(8, "X resigns")]))
+    assert res["processed"] >= 1

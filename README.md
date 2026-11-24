@@ -147,13 +147,17 @@ on disk is untouched) and re-scores everything:
 - **flipper**: an informed-style buy sold back before the outcome became public
 
 Results over all 200 markets, seeds 1–3 (≈30 planted positions per kind and seed),
-for categories where non-public information is plausible:
+for categories where non-public information is plausible, with the current eight signals:
 
 | Planted | Top 1% of ~7,000 positions | At/above review threshold | Median score |
 |---|---|---|---|
-| informed | 80–82% | 36–55% | 48–52 |
-| early | 37–50% | 15–32% | 36–38 |
-| flipper | 11–17% | 0–7% | 19–22 |
+| informed | 82–90% | 39–60% | 47–51 |
+| early | 22–39% | 4–14% | 32–34 |
+| flipper | 4–14% | 0% | 18–19 |
+
+Adding price leadership and track record (`uv run python -m eval.backtest --compare`) raised
+informed trades in the top 1% from 80–82% to 82–90% while pushing long-held "early" trades at
+the threshold down from 15–32% to 4–14%: better on both sides, so they were adopted.
 
 Informed trades in sports and 5-minute crypto markets are **not** caught (0% at threshold):
 those markets trade almost entirely in their final hours, so timing cannot tell an
