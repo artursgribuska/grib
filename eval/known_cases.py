@@ -61,6 +61,11 @@ CASES = [
      "about": "Maduro removed from power in January 2026. The CFTC's first insider-trading complaint on event "
               "contracts (SDNY 26-cv-3369, April 2026) alleges the purchase of more than 436,000 'Yes' shares of "
               "this market between December 2025 and January 2026 on misappropriated non-public information."},
+    {"key": "us-strikes-iran-2026-02", "events": ["us-strikes-iran-by", "us-next-strikes-iran-on-312"],
+     "match": ["February 28, 2026", "March 1, 2026", "next strike Iran"],
+     "about": "US strikes on Iran, late February 2026: Bubblemaps reported (May 2026) a group of linked wallets that "
+              "made about $2.4M on bets tied to US military action, mostly against Iran, with a very high win rate. "
+              "Added after the engine was frozen: an out-of-sample test."},
     {"key": "iran-ceasefire-2026-04", "events": ["us-x-iran-ceasefire-by"], "match": ["April 7", "April 10", "April 15"],
      "about": "US–Iran ceasefire announced in April 2026: a member of Congress asked the CFTC to investigate trades "
               "placed shortly before the announcement, and Bubblemaps reported a cluster of linked accounts that made "
