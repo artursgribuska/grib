@@ -6,13 +6,13 @@ confident bets on the eventual winner), scores it with explainable signals and w
 a case file. This demo runs on **public Polymarket data**, and on an operator's own bet
 export through the same engine.
 
-**Does it work?** Run blind on markets behind publicly reported suspected-leak episodes, the
-unchanged engine ranked them **#1** (Maduro, January 2026), **#4** (Nobel Peace Prize 2025) and
-**#2** (US–Iran ceasefire, April 2026, added after the engine was frozen) and **#18** (Google Year in
-Search 2025) among 9,376 positions; its #1 alert matches the trading in the CFTC's first
-event-contract insider complaint; on planted trades, 82–84% of
-informed buys land in the top 1%. See *Validation* below, `docs/demo.md` for a five-minute
-walkthrough and `docs/investor-brief.md` for the business case.
+**Does it work?** Run blind on markets behind five publicly reported suspected-leak episodes,
+two of them added only after the engine was frozen, the unchanged engine ranks those stories
+**#1, #2, #4, #5 and #7 of 128 events**. Its top alert in the Maduro market matches the trading in
+the CFTC's first event-contract insider complaint (436,760 Yes shares). Replayed with only the data
+available at each moment, the live watch flags the cases 10 to 248 hours before the news. On
+planted trades, 82–84% of informed buys land in the top 1%. See *Validation* below,
+`docs/demo.md` for a five-minute walkthrough and `docs/investor-brief.md` for the business case.
 
 > **Disclaimer:** demo built on public data. Alerts are statistical signals, not legal
 > findings, and do not identify or accuse any person. Wallets are pseudonymous.
@@ -185,23 +185,29 @@ must out-rank everyday ones. The engine sees trades only — no names, times or 
 
     uv run python -m eval.known_cases     # ≈15 min first time; report in data/known_cases/report.md
 
-| Case (public reports) | Markets | Best rank of 9,376 | Alerts at threshold |
-|---|---|---|---|
-| Maduro removed from power, January 2026 — "Maduro out by January 31" | 1 | **1** | 4 |
-| 2025 Nobel Peace Prize — winner's price jumped from 3¢ to 75¢ ten hours before the announcement | 1 | **4** | 3 |
-| Google Year in Search 2025 — ten "most searched" list events, all markets | 487 | **18** | 1 |
-| US–Iran ceasefire, April 2026 — **out of sample**: added after the engine was frozen | 3 | **2** | 17 |
+| Case (public reports) | Markets | Event rank (of 128 stories) | Best position rank (of 10,908) | Alerts at threshold |
+|---|---|---|---|---|
+| US strikes on Iran, February 2026 — **out of sample** | 34 | **1** | 1 | 167 |
+| Maduro removed from power, January 2026 — "Maduro out by January 31" | 1 | **2** | 5 | 4 |
+| US–Iran ceasefire, April 2026 — **out of sample** | 3 | **4** | 35 | 19 |
+| 2025 Nobel Peace Prize — winner's price jumped from 3¢ to 75¢ ten hours before the announcement | 1 | **5** | 61 | 3 |
+| Google Year in Search 2025 — ten "most searched" list events, all markets | 487 | **7** | 134 | 1 |
 
-20 of the top 25 alerts come from case markets, which hold 26% of positions. The Iran case was
-added after all engine changes, as a test the engine could not have been tuned to; its 17 alerts
-also show the cost side: in a heavily anticipated event, reviewers would have many leads to clear. The reports are
-allegations and the accounts are pseudonymous: this is evidence about the engine, not about
-any person.
+*Out of sample* means added after every engine change, so the engine could not have been tuned to it.
+
+**Why events, not positions.** A big geopolitical event draws a wave of new accounts buying in its
+final hours: the February strikes produced 167 alerts at threshold, and in a raw position ranking
+they bury every other story (24 of the top 25 positions come from case markets). Some of that wave
+may be informed and much of it is probably rumour-chasing; without news data for February the
+engine cannot tell. Reviewers triage stories, so the review queue groups alerts by event (at
+most 3 shown per event, with a count of the rest), and the event rank is the headline measure.
+The reports are allegations and the accounts are pseudonymous: this is evidence about the
+engine, not about any person.
 
 **Match with a CFTC complaint.** The CFTC's first insider-trading complaint on event contracts
 (SDNY 26-cv-3369, April 2026) alleges the purchase of "more than 436,000 Yes shares" of
-"Maduro out by January 31, 2026?" between December 2025 and January 2026. The engine's #1
-alert is a position of **436,760 Yes shares** in that market, bought 31 December 2025 –
+"Maduro out by January 31, 2026?" between December 2025 and January 2026. The engine's top
+alert in that market is a position of **436,760 Yes shares**, bought 31 December 2025 –
 3 January 2026 for $32,538. Identity cannot be confirmed from on-chain data and we do not try;
 market, share count, amount and dates match.
 
@@ -227,8 +233,8 @@ engine flaws, now fixed (each checked against the planted-trade backtest, which 
 - Long-shot conviction was measured against total volume, including post-news frenzies that
   dwarf the market beforehand (d4vd: $1.6M before, $6.9M total). It now uses pre-public volume.
 
-**Limits.** Four cases is still small evidence, chosen because they were reported; only the Iran
-case was added after the engine was frozen. Where
+**Limits.** Five cases is still small evidence, chosen because they were reported; two were
+added after the engine was frozen. Where
 the public reports describe many modest wins across sibling markets (Google), the engine is
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
