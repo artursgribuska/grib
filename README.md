@@ -250,6 +250,7 @@ Replayed over history with only the data available at each moment (`uv run pytho
 |---|---|---|
 | Maduro, January 2026 | **16.6 hours**: the engine's #1 account (5 days old), once its drip-bought total passed $10k at 7¢ | 2 / 0 |
 | Nobel Peace Prize 2025 | **10 hours**: the account that started the run-up, on its first $2,675 at 8¢ | 1 / 0 |
+| US–Iran ceasefire, April 2026 (**out of sample**) — "by April 7" / "by April 15" | **248 h** / **158 h**: accounts 0 and 1 days old buying at 11–15¢ | 6 / 2 and 4 / 0 |
 | 200 ordinary markets, last 14 days each | 6.4 alerts per 1,000 market-days | alerted long shots won 18% vs 15% implied; run-up initiators 43% vs 30% |
 
 The ordinary-market samples are small (11 and 7 alerts): the run-up edge is early evidence of
