@@ -1,0 +1,76 @@
+# Project status
+
+*As of 25 November 2026.* This is a snapshot. The README is the reference, and each
+figure below can be reproduced with the command shown next to it.
+
+## What exists
+
+| Part | State | Command |
+|---|---|---|
+| Public-data pipeline: load, enrich, score, funding, news, case files, dashboard | Working. Incremental. Records each run and writes a digest | `uv run python -m pipeline` |
+| Scoring engine: 8 signals plus hedge and exit deductions | Working. Validated as below | `uv run python -m scoring.run` |
+| AI case files | Working. Number, language and rubric checks; 10 of 10 passed on the latest runs | `uv run python -m cases.run` |
+| Live watch on open markets | Working. First run: 150 markets, 287,939 trades, 6 alerts | `uv run python -m watch.run_live` |
+| Analyst review loop | Working. Dashboard decisions, audit trail, per-signal statistics | `uv run python -m app.review` |
+| Operator data (sportsbook CSV) | Working. Example in `examples/operator/` | `uv run python -m ingest.csv_loader` |
+| Tests | 105 passing | `uv run pytest` |
+
+## What it shows
+
+**Publicly reported cases.** The engine was run unchanged and saw trades only. Ranks are
+out of 8,249 positions (`uv run python -m eval.known_cases`):
+
+- Maduro (January 2026): #1
+- Nobel Peace Prize 2025: #4
+- Google Year in Search 2025: #7
+- 12 of the top 25 alerts come from case markets, which hold 16% of all positions.
+
+**Live watch, replayed using only the data available at each moment**
+(`uv run python -m watch.live --replay`):
+
+- Maduro: flagged 16.6 hours before the news, on the same #1 account.
+- Nobel: flagged 10 hours before the announcement, on the account that started the price
+  run-up.
+- Ordinary markets: 6.4 alerts per 1,000 market-days.
+
+**Planted trades** (`uv run python -m eval.backtest --markets 200 --seed 1`):
+
+- 82–84% of informed trades rank in the top 1%.
+- Accounts that sold before the news reach the review threshold 0–3% of the time.
+
+## What changed because of the evidence
+
+The first run on real cases missed most of the Nobel case. That run exposed four engine
+flaws, and each was fixed and re-checked against the backtest:
+
+- timing baseline contaminated by the leak itself
+- no credit for starting a price run-up
+- exits into the run-up penalised
+- conviction measured against volume that came after the news
+
+A code review then found ten more issues, all fixed, each with a regression test. Most
+concerned operator data, and one concerned news searches outside GDELT's three-month
+window. Details are in the README and the commit history.
+
+## Known limits
+
+- **Three public cases** is still a small sample.
+- **Sports and 5-minute crypto markets** are blind spots by design.
+- **Google-style cases** (many modest wins across sibling markets) are harder to catch
+  than single large bets.
+- **Older wallet funding** needs a paid archive RPC node: 37 of 82 wallets in the demo
+  could not be scanned.
+- **GDELT news** covers only the last ~3 months. It also rate-limits; failed searches are
+  marked as failed and retried, never reported as "no news".
+- **The live watch** needs scheduling (every few hours) to protect payouts in practice.
+
+## Needs a decision
+
+1. **Archive node key.** Choose a provider and add the key as `POLYGON_RPC_URL`, then run
+   `uv run python -m ingest.funding --rescan`.
+2. **Review threshold.** 50 works as a "definitely look" line. Ranking by the top 1% is the
+   better cut if reviewers can handle about 70 alerts.
+3. **Business model, fundraising amount, team.** These are open in `docs/investor-brief.md`.
+4. **Publishing.** Nothing has been published. Outputs name no one and truncate wallets, but
+   any public use of the known-case material needs care, because the reports behind those
+   cases are allegations.
