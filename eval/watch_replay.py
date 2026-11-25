@@ -44,24 +44,24 @@ def report(con) -> str:
     lines = ["# Live watch — replay", "",
              f"Replayed with only the trades available at each moment, over the {DAYS} days before each outcome "
              "became public. Alerts are leads for review, not findings.", ""]
-    # ---- known cases: only the single-market cases (lead time is per market)
+    # ---- known cases with a handful of markets (lead time is per market; the 487-market Google case is skipped)
     for key, g in cases.groupby("case"):
-        if len(g) > 1:
+        if len(g) > 5:
             continue
-        a = _replay_markets(con, g.market_id, 2, facts, seen)
-        q = g.question.iloc[0]
-        lines += [f"## {key}: {q}", ""]
-        if a.empty:
-            lines += ["No alert fired before the outcome became public.", ""]
-            continue
-        w = a[a.on_winner & (a.hours_before_public > 0)].sort_values("at")
-        lines.append(f"{len(w)} alert(s) on the eventual winner before it was public; "
-                     f"{int((~a.on_winner).sum())} on other outcomes.")
-        if len(w):
-            first = w.iloc[0]
-            lines.append(f"First: **{first.hours_before_public:.1f} hours before** — {first.kind.replace('_', ' ')}, "
-                         f"{short_account(first.account_id)}, ${first.usd:,.0f} at {first.avg_price:.2f} ({first.detail}).")
-        lines.append("")
+        for mid, q in zip(g.market_id, g.question):
+            a = _replay_markets(con, [mid], 2, facts, seen)
+            lines += [f"## {key}: {q}", ""]
+            if a.empty:
+                lines += ["No alert fired before the outcome became public.", ""]
+                continue
+            w = a[a.on_winner & (a.hours_before_public > 0)].sort_values("at")
+            lines.append(f"{len(w)} alert(s) on the eventual winner before it was public; "
+                         f"{int((~a.on_winner).sum())} on other outcomes.")
+            if len(w):
+                first = w.iloc[0]
+                lines.append(f"First: **{first.hours_before_public:.1f} hours before** — {first.kind.replace('_', ' ')}, "
+                             f"{short_account(first.account_id)}, ${first.usd:,.0f} at {first.avg_price:.2f} ({first.detail}).")
+            lines.append("")
     # ---- alert volume on ordinary markets
     ordinary = [m for m in con.execute("SELECT market_id FROM market_state").df().market_id
                 if m not in set(cases.market_id)]
