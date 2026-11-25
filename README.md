@@ -227,7 +227,8 @@ engine flaws, now fixed (each checked against the planted-trade backtest, which 
 - Long-shot conviction was measured against total volume, including post-news frenzies that
   dwarf the market beforehand (d4vd: $1.6M before, $6.9M total). It now uses pre-public volume.
 
-**Limits.** Three cases is anecdote-sized evidence, chosen because they were reported. Where
+**Limits.** Four cases is still small evidence, chosen because they were reported; only the Iran
+case was added after the engine was frozen. Where
 the public reports describe many modest wins across sibling markets (Google), the engine is
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.

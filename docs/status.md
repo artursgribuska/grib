@@ -63,7 +63,7 @@ window. Details are in the README and the commit history.
 
 ## Known limits
 
-- **Three public cases** is still a small sample.
+- **Four public cases** (one of them out of sample) is still a small sample.
 - **Sports and 5-minute crypto markets** are blind spots by design.
 - **Google-style cases** (many modest wins across sibling markets) are harder to catch
   than single large bets.
