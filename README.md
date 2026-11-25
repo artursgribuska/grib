@@ -83,6 +83,9 @@ rule-based starting risk rating, and the data limitations. The model
 timeline, evidence per signal, innocent explanations considered, risk rating with
 confidence, next steps and open questions.
 
+A case file costs about 7.6¢ in model usage (average of 33: 11.3k input and 5.3k output
+tokens at Claude Sonnet 5.5 list prices); each run prints its spend.
+
 Two automatic checks run on every draft (`cases/numbers.py`):
 - **Number check** — every number in the text must appear in the bundle (rounding and
   0–1 shares written as percentages are allowed). Invented figures are sent back to the

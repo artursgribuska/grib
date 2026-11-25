@@ -19,7 +19,7 @@ import duckdb
 
 import config
 from cases.bundle import build_bundle, case_id
-from cases.writer import MissingApiKey, make_client, render_markdown, write_case
+from cases.writer import MissingApiKey, cost_usd, make_client, render_markdown, write_case
 
 OUT_DIR = config.OUTPUT_DIR / "cases"
 
@@ -102,7 +102,7 @@ def main(argv=None) -> int:
     if args.only_new:   # position -> fingerprint of the evidence its case file was written from
         existing = {pid: evidence_fingerprint(json.loads(bj))
                     for pid, bj in con.execute("SELECT position_id, bundle_json FROM case_files").fetchall()}
-    written = 0
+    written, spent = 0, 0.0
     for rank, pid in enumerate(ids, 1):
         bundle = build_bundle(con, pid)
         if existing.get(pid) == evidence_fingerprint(bundle):   # same evidence: re-export under the current rank
@@ -121,6 +121,7 @@ def main(argv=None) -> int:
             continue
         res = write_case(bundle, client)
         written += 1
+        spent += cost_usd(res.usage) or 0.0
         md = render_markdown(bundle, res)
         (OUT_DIR / f"{stem}.md").write_text(md)
         con.execute("INSERT OR REPLACE INTO case_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
@@ -135,7 +136,8 @@ def main(argv=None) -> int:
         if res.unmatched_numbers:
             print(f"      untraced numbers: {res.unmatched_numbers}")
     con.close()
-    print(f"\n{written} case file(s) written to {OUT_DIR}")
+    print(f"\n{written} case file(s) written to {OUT_DIR}"
+          + (f" (≈${spent:.2f} at list prices, ≈${spent / written:.3f} each)" if written else ""))
     return 0
 
 

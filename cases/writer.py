@@ -24,6 +24,15 @@ from dotenv import load_dotenv
 from cases.numbers import check_language, check_numbers
 
 MODEL = "claude-sonnet-5-5"
+# list prices, USD per million tokens (input, output), for the cost line in run output; update if prices change
+PRICE_PER_MTOK = {"claude-sonnet-5-5": (2.0, 10.0)}
+
+
+def cost_usd(usage: dict, model: str = MODEL) -> float | None:
+    price = PRICE_PER_MTOK.get(model)
+    if not price or not usage:
+        return None
+    return (usage.get("input_tokens", 0) * price[0] + usage.get("output_tokens", 0) * price[1]) / 1e6
 MAX_TOKENS = 16_000
 EFFORT = "high"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "case_file_system.md"

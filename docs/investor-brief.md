@@ -72,6 +72,7 @@ It works at two points in time:
 | Five publicly reported episodes, engine unchanged and given trades only, ranked as stories among 128 events | US strikes on Iran, Feb 2026 (**out of sample**): **#1**. Maduro, Jan 2026: **#2**. Iran ceasefire, Apr 2026 (**out of sample**): **#4**. Nobel Peace Prize 2025: **#5**. Google Year in Search 2025: **#7**. *Out of sample* = added after every engine change |
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
+| Unit cost | An AI case file costs about **7.6¢** in model usage (33 written: 11.3k input and 5.3k output tokens on average, Claude Sonnet 5.5 list prices). 1 of 33 needed a second attempt to fix a number |
 | Engineering | 104 automated tests. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades |
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel

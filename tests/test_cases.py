@@ -110,3 +110,9 @@ def test_number_check_catches_invented_figures_with_unit_suffixes():
     assert check_numbers("bought $43k, about 6.2h before, 4x the typical", bundle) == []
     bad = check_numbers("bought $50k within 9h, 7x the typical, $1.2M paid", bundle)
     assert set(bad) == {"$50k", "9h", "7x", "$1.2M"}
+
+
+def test_cost_is_computed_from_token_usage():
+    from cases.writer import cost_usd
+    assert cost_usd({"input_tokens": 1_000_000, "output_tokens": 100_000}) == 2.0 + 1.0
+    assert cost_usd({}) is None and cost_usd({"input_tokens": 1}, model="unknown") is None
