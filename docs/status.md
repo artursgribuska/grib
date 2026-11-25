@@ -26,13 +26,17 @@ Jensen Huang/NVIDIA position at #1. Reports the same days described suspicious c
 those markets.
 
 **Publicly reported cases.** The engine was run unchanged and saw trades only. Ranks are
-out of 9,376 positions (`uv run python -m eval.known_cases`):
+per story, out of 128 events (`uv run python -m eval.known_cases`):
 
-- Maduro (January 2026): #1
-- Nobel Peace Prize 2025: #4
-- Iran ceasefire, April 2026 (out of sample, added after the engine was frozen): #2
-- Google Year in Search 2025: #18
-- 20 of the top 25 alerts come from case markets, which hold 26% of all positions.
+- US strikes on Iran, February 2026 (out of sample): #1
+- Maduro (January 2026): #2
+- Iran ceasefire, April 2026 (out of sample): #4
+- Nobel Peace Prize 2025: #5
+- Google Year in Search 2025: #7
+
+*Out of sample* means the case was added after every engine change. In a raw position
+ranking (10,908 positions), the February strikes flood the list with 167 alerts, which is
+why the review queue groups alerts by event.
 
 **Live watch, replayed using only the data available at each moment**
 (`uv run python -m watch.live --replay`):
@@ -63,7 +67,7 @@ window. Details are in the README and the commit history.
 
 ## Known limits
 
-- **Four public cases** (one of them out of sample) is still a small sample.
+- **Five public cases** (two of them out of sample) is still a small sample.
 - **Sports and 5-minute crypto markets** are blind spots by design.
 - **Google-style cases** (many modest wins across sibling markets) are harder to catch
   than single large bets.

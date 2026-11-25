@@ -66,16 +66,16 @@ It works at two points in time:
 
 | Evidence | Result |
 |---|---|
-| **Match with the CFTC's first insider case on event contracts** (SDNY 26-cv-3369) | The complaint alleges "more than 436,000 Yes shares" of "Maduro out by January 31, 2026?" bought in Dec 2025–Jan 2026. The engine's blind #1 alert (of 9,376) is 436,760 Yes shares in that market, bought 31 Dec–3 Jan for $32,538. Identity is not confirmed; the trading matches |
+| **Match with the CFTC's first insider case on event contracts** (SDNY 26-cv-3369) | The complaint alleges "more than 436,000 Yes shares" of "Maduro out by January 31, 2026?" bought in Dec 2025–Jan 2026. The engine's top alert in that market, found blind, is 436,760 Yes shares, bought 31 Dec–3 Jan for $32,538. Identity is not confirmed; the trading matches |
 | **Prospective flag** | The first run on 24 Nov 2026, before we had seen any reporting, put a Jensen Huang/NVIDIA position at #1 of 6,966. The same days, reports described suspicious account clusters winning about $350k on Huang's return |
-| **Live watch, replayed using only data available at each moment** | Maduro: the account that ranks #1 below was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. Iran ceasefire (out of sample): first alerts **6–10 days before** the announcement, on accounts 0–1 days old. Alerts on the losing side: none for Maduro or Nobel, 2 of 12 for Iran. Ordinary markets: 6.4 alerts per 1,000 market-days |
-| Publicly reported episodes, engine unchanged and given trades only, ranked among 9,376 positions | Maduro (January 2026): **#1**. Iran ceasefire (April 2026, **added after the engine was frozen**): **#2**. Nobel Peace Prize 2025: **#4**. Google Year in Search 2025 (487 markets): **#18**. 20 of the top 25 alerts came from case markets that hold 26% of positions |
+| **Live watch, replayed using only data available at each moment** | Maduro: the account matching the CFTC complaint was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. Iran ceasefire (out of sample): first alerts **6–10 days before** the announcement, on accounts 0–1 days old. Alerts on the losing side: none for Maduro or Nobel, 2 of 12 for Iran. Ordinary markets: 6.4 alerts per 1,000 market-days |
+| Five publicly reported episodes, engine unchanged and given trades only, ranked as stories among 128 events | US strikes on Iran, Feb 2026 (**out of sample**): **#1**. Maduro, Jan 2026: **#2**. Iran ceasefire, Apr 2026 (**out of sample**): **#4**. Nobel Peace Prize 2025: **#5**. Google Year in Search 2025: **#7**. *Out of sample* = added after every engine change |
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
 | Engineering | 104 automated tests. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades |
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel
-case. The study found four real flaws in it. Each was fixed and re-checked against the
+case. The study found four real flaws in it, and a later case showed that one event can flood a raw ranking, so the queue now groups alerts by event. Each was fixed and re-checked against the
 planted-trade backtest. This is how we intend to keep improving: on real cases, with the
 regressions measured.
 
