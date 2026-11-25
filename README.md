@@ -19,6 +19,12 @@ planted trades, 82–84% of informed buys land in the top 1%. See *Validation* b
 
 ## Quick start
 
+**Try it first (≈10–15 minutes):** `uv sync`, set `GRIB_ANTHROPIC_API_KEY` (optional: without it
+you get everything but the AI case files), then `uv run python -m demo`. It loads 40 ordinary
+markets plus the Maduro and Nobel cases into its own `data/demo/`, runs the unchanged engine and
+the live-watch replay, and writes a dashboard. In that smaller universe the two cases rank #1 and
+#3 of 2,055 positions, flagged 16.6 h and 10 h before the news.
+
 **Day to day:** `uv run python -m pipeline` runs everything below in one go and is safe to repeat
 (e.g. daily): new markets are added, caches are reused, and AI case files are only written for
 alerts that are new or whose evidence changed. Each run writes a digest to `data/digest/latest.md`. Then open `data/dashboard/index.html`, review alerts,
