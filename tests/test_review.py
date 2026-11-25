@@ -81,3 +81,10 @@ def test_dashboard_shows_status_and_review_controls(con, tmp_path):
     page = build(con, top=10, out=tmp_path / "i.html").read_text()
     assert 'data-status="escalated"' in page and "senior review" in page
     assert page.count('class="review"') >= 1 and "rv-export" in page
+
+
+def test_review_cli_on_an_empty_database_says_what_to_do(tmp_path, monkeypatch, capsys):
+    import config
+    monkeypatch.setattr(config, "DB_PATH", tmp_path / "empty.duckdb")
+    assert review.main(["queue"]) == 1
+    assert "run `uv run python -m pipeline` first" in capsys.readouterr().err

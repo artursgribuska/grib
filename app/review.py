@@ -177,6 +177,10 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
 
     con = connect()
+    if not con.execute("SELECT count(*) FROM information_schema.tables WHERE table_name = 'position_scores'").fetchone()[0]:
+        print("No scored alerts yet: run `uv run python -m pipeline` first.", file=sys.stderr)
+        con.close()
+        return 1
     try:
         if a.cmd == "queue":
             df = queue(con, a.limit)

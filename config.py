@@ -11,6 +11,7 @@ DB_PATH = Path(os.environ["GRIB_DB_PATH"]) if os.environ.get("GRIB_DB_PATH") els
 # Generated outputs (case files, dashboard, backtest) live next to their database so two
 # datasets never overwrite each other: data/ for the default database, data/<db name>/ otherwise.
 OUTPUT_DIR = DATA_DIR if DB_PATH == DATA_DIR / "integrity.duckdb" else DATA_DIR / DB_PATH.stem
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)   # a fresh checkout has no data/ folder yet
 
 DATA_API = "https://data-api.polymarket.com/v2"
 GAMMA_API = "https://gamma-api.polymarket.com"
