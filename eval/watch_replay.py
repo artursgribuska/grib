@@ -44,12 +44,14 @@ def report(con) -> str:
     lines = ["# Live watch — replay", "",
              f"Replayed with only the trades available at each moment, over the {DAYS} days before each outcome "
              "became public. Alerts are leads for review, not findings.", ""]
-    # ---- known cases with a handful of markets (lead time is per market; the 487-market Google case is skipped)
+    # ---- known cases (lead time is per market; the 487-market Google case is skipped)
     for key, g in cases.groupby("case"):
-        if len(g) > 5:
+        if len(g) > 100:
             continue
         for mid, q in zip(g.market_id, g.question):
             a = _replay_markets(con, [mid], 2, facts, seen)
+            if a.empty and len(g) > 5:     # many sibling markets: list only those where something fired
+                continue
             lines += [f"## {key}: {q}", ""]
             if a.empty:
                 lines += ["No alert fired before the outcome became public.", ""]
