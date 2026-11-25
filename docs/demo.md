@@ -26,6 +26,18 @@ Open `data/known_cases/dashboard/index.html` and look at the Nobel Peace Prize 2
   Medium up to High and named its facts: 5 other flagged wallets on the event, and 8
   low-history buyers of the same long shot within 24 h.
 
+## 2b. It would have warned them in time (60 s)
+
+Run `uv run python -m watch.live --replay`. It replays history using only the data
+available at each moment:
+
+- Maduro: flagged **16.6 hours before the news**, on the same account, 5 days old and
+  drip-buying at 7¢.
+- Nobel: flagged **10 hours before** the announcement, on the account that started the
+  run-up.
+
+Then show `data/live/watch.md`, which is today's live alerts on open markets.
+
 ## 3. The case file (90 s)
 
 Open the matching case file in `data/known_cases/cases/`. Show:

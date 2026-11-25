@@ -28,6 +28,14 @@ An AI compliance analyst. It reads a venue's trades, finds the positions that lo
 trading on non-public information, and writes the first draft of the case file. A human
 reviewer decides.
 
+It works at two points in time:
+
+- **Live, before payout.** The watch runs on open markets. It flags fresh accounts building
+  heavy long-shot positions, and accounts that start sharp price run-ups. A venue can then
+  hold a withdrawal before it is paid out.
+- **After resolution.** A full review of each market, with the scored evidence and the case
+  file.
+
 1. **Detection: eight signals, every point explained.**
    - *Behaviour:* timing relative to the market's own rhythm, conviction on long shots,
      price leadership (including who started a pre-public price run-up), coordinated entry
@@ -58,10 +66,11 @@ reviewer decides.
 
 | Evidence | Result |
 |---|---|
+| **Live watch, replayed using only data available at each moment** | Maduro: the account that ranks #1 below was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. No alerts on the losing side in either case. Ordinary markets: 6.4 alerts per 1,000 market-days |
 | Publicly reported episodes, engine unchanged and given trades only, ranked among 8,249 ordinary positions | Maduro (January 2026): **#1**. Nobel Peace Prize 2025: **#4**. Google Year in Search 2025 (487 markets): **#7**. 12 of the top 25 alerts came from case markets that hold 16% of positions |
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
-| Engineering | 91 automated tests. The full pipeline reruns in minutes from cache |
+| Engineering | 104 automated tests. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades |
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel
 case. The study found four real flaws in it. Each was fixed and re-checked against the
@@ -118,8 +127,8 @@ These are options to test with customers, not claims:
    with each case checked like the ones above.
 3. **Data coverage.** An archive node for older wallet funding. Wire, social and official
    release sources alongside GDELT.
-4. **Production hardening.** Scheduled runs, access control, and data retention aligned
-   with CFTC record-keeping.
+4. **Production hardening.** Scheduled live-watch runs every few hours with notifications,
+   access control, and data retention aligned with CFTC record-keeping.
 
 ## The ask **[decide]**
 
