@@ -13,7 +13,10 @@ figure below can be reproduced with the command shown next to it.
 | Live watch on open markets | Working. First run: 150 markets, 287,939 trades, 6 alerts | `uv run python -m watch.run_live` |
 | Analyst review loop | Working. Dashboard decisions, audit trail, per-signal statistics | `uv run python -m app.review` |
 | Operator data (sportsbook CSV) | Working. Example in `examples/operator/` | `uv run python -m ingest.csv_loader` |
-| Tests | 106 passing | `uv run pytest` |
+| Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
+| Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
+| Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
+| Tests | 111 passing | `uv run pytest` |
 
 ## What it shows
 
