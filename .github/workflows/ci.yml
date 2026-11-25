@@ -14,5 +14,5 @@ jobs:
           version: "0.11.32"
       - name: Install
         run: uv sync --locked
-      - name: Test (offline: no network, no API key needed)
+      - name: "Test (offline - no network, no API key needed)"
         run: uv run pytest -q
