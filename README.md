@@ -49,7 +49,7 @@ with the public demo. Column definitions are in `ingest/csv_loader.py`; rows tha
 (bad timestamps, odds ≤ 1, unknown markets …) are counted and reported, not silently dropped.
 `examples/operator/` holds a synthetic sportsbook export (2,021 bets, 6 markets) with one planted
 pattern — two day-old accounts backing a 9.0 outsider in a CEO-appointment market hours before
-the announcement. The engine ranks those two accounts first (scores 79 and 77) and the case
+the announcement. The engine ranks those two accounts first (scores 73 and 71) and the case
 writer rates both High.
 
 ## Reviewing alerts
