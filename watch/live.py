@@ -208,7 +208,12 @@ def main(argv=None) -> int:
     con = duckdb.connect(a.db, read_only=True)
     if a.replay:
         from eval.watch_replay import report
-        print(report(con))
+        text = report(con)
+        out = config.DATA_DIR / "known_cases" / "watch_replay.md"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text)
+        print(text)
+        print(f"(written to {out})")
     else:
         alerts = scan(con, datetime.utcnow())
         for x in alerts:
