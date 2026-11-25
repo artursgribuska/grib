@@ -151,6 +151,18 @@ def report() -> str:
     summary = {"positions": int(total), "cases": []}
     top25 = ranked[ranked["rank"] <= 25]
     n_case_top25 = top25.market_id.isin(cases.market_id).sum()
+    ev = con.execute("""SELECT pe.event_key, max(ps.score) AS best,
+                               bool_or(ps.market_id IN (SELECT market_id FROM known_case_markets)) AS is_case
+                        FROM position_scores ps JOIN position_events pe USING (position_id)
+                        GROUP BY 1 ORDER BY best DESC""").df() if "position_events" in {
+        r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()} else None
+    if ev is not None and len(ev):
+        ev["rank"] = range(1, len(ev) + 1)
+        case_ranks = ", ".join(f"#{r}" for r in ev[ev.is_case]["rank"])
+        lines += [f"**Event view** (one row per story, ranked by its strongest position): the case events rank "
+                  f"{case_ranks} of {len(ev)} events.", ""]
+        summary["event_ranks"] = [int(r) for r in ev[ev.is_case]["rank"]]
+        summary["events"] = int(len(ev))
     lines += [f"**{n_case_top25} of the top 25 alerts** come from the {len(cases)} case market(s) "
               f"(which hold {ranked.market_id.isin(cases.market_id).sum():,} of the {total:,} positions).", ""]
     for case in CASES:

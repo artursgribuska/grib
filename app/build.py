@@ -25,6 +25,7 @@ from scoring.run import ROLLUP_MIN_SCORE
 from scoring.score import ALERT_THRESHOLD, LABELS, short_account
 
 OUT = config.OUTPUT_DIR / "dashboard" / "index.html"
+PER_EVENT = 3
 SIGNAL_ORDER = ["pre_resolution_timing", "low_probability_conviction", "fresh_single_purpose_wallet",
                 "size_anomaly", "category_prior", "coordinated_entry", "price_leadership", "long_shot_track_record"]
 COLORS = {"pre_resolution_timing": "var(--c1)", "low_probability_conviction": "var(--c2)",
@@ -49,7 +50,19 @@ def _tables(con) -> set[str]:
 
 def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
     t = _tables(con)
-    alerts = con.execute("SELECT * FROM position_scores ORDER BY score DESC LIMIT ?", [top]).df()
+    # event-grouped queue: at most PER_EVENT alerts per event (related markets on one story), so a
+    # surge of alerts on one event cannot bury every other story; the rest are counted, not hidden
+    if "position_events" in t:
+        alerts = con.execute(f"""
+            SELECT ps.*, pe.event_key, pe.event_rank,
+                   count(*) FILTER (WHERE ps2.score >= {ALERT_THRESHOLD - 10}) AS event_alerts
+            FROM position_scores ps JOIN position_events pe USING (position_id)
+            JOIN position_events pe2 ON pe2.event_key = pe.event_key
+            JOIN position_scores ps2 ON ps2.position_id = pe2.position_id
+            WHERE pe.event_rank <= {PER_EVENT}
+            GROUP BY ALL ORDER BY ps.score DESC LIMIT ?""", [top]).df()
+    else:
+        alerts = con.execute("SELECT * FROM position_scores ORDER BY score DESC LIMIT ?", [top]).df()
     ids = list(alerts.position_id)
     sigs = con.execute("SELECT * FROM signal_results WHERE position_id IN (SELECT unnest(?))", [ids]).df()
     cases = (con.execute("SELECT position_id, risk_level, risk_confidence, checks_passed, case_json FROM case_files")
@@ -110,6 +123,9 @@ def alert_rows(d: dict) -> str:
     sigs = d["sigs"]
     for rank, a in enumerate(d["alerts"].itertuples(), 1):
         contrib = json.loads(a.contributions_json)
+        extra = int(getattr(a, "event_alerts", 0) or 0) - PER_EVENT
+        more = (f" · <b>+{extra} more alert{'s' if extra != 1 else ''} in this event</b>"
+                if extra > 0 and getattr(a, "event_rank", 0) == 1 else "")
         s = sigs[sigs.position_id == a.position_id]
         sig_list = "".join(
             f'<tr><td><i class="dot" style="background:{COLORS.get(r.signal, "var(--muted)")}"></i>{e(LABELS[r.signal])}</td>'
@@ -160,7 +176,7 @@ def alert_rows(d: dict) -> str:
         <span class="score">{a.score:.1f}</span>
         {bar(contrib)}
         <span class="q">{e(a.question)}<small>{e(a.category.replace('_', ' '))} · {e(short_account(a.account_id))} ·
-          ${a.position_notional:,.0f} on '{e(a.outcome)}' at {a.avg_price:.2f}</small></span>
+          ${a.position_notional:,.0f} on '{e(a.outcome)}' at {a.avg_price:.2f}{more}</small></span>
         <span class="badges">{badge}</span>
       </summary>
       <div class="body">
@@ -245,6 +261,8 @@ def known_cases_html() -> str:
         sm = json.loads(f.read_text())
     except (OSError, ValueError):
         return ""
+    ev_txt = (f" Grouped into stories (one row per event), the case events rank "
+              f"{', '.join('#' + str(r) for r in sm['event_ranks'])} of {sm['events']}." if sm.get("event_ranks") else "")
     rows = "".join(f"<tr><td>{e(c['case'])}</td><td class=num>{c['markets']}</td><td class=num>{c['candidates']}</td>"
                    f"<td class=num>{c['at_threshold']}</td><td class=num><b>{c['best_rank']:,}</b></td><td>{e(c['about'])}</td></tr>"
                    for c in sm.get("cases", []))
@@ -253,7 +271,7 @@ def known_cases_html() -> str:
     <p class="muted">The unchanged engine was run on markets that were the subject of public reports of suspected
       trading on non-public information, inside the ordinary universe of {sm['positions']:,} positions (rank 1 = top alert).
       It saw trades only. {sm.get('case_share_of_top25', 0)} of the top 25 alerts came from case markets, which hold
-      {sm.get('case_positions', 0):,} of the positions. Reports are allegations; see <code>data/known_cases/report.md</code>.</p>
+      {sm.get('case_positions', 0):,} of the positions.{ev_txt} Reports are allegations; see <code>data/known_cases/report.md</code>.</p>
     <div class="scroll"><table><thead><tr><th>Case</th><th>Markets</th><th>Candidates</th><th>≥ threshold</th>
       <th>Best rank</th><th>Why it is a case</th></tr></thead><tbody>{rows}</tbody></table></div></section>"""
 
@@ -374,7 +392,8 @@ def render(d: dict) -> str:
   {live_watch_html() if config.DB_PATH == config.DATA_DIR / "integrity.duckdb" else ""}
   <h2>Top {len(d['alerts'])} alerts</h2>
   <p class="muted">Bar length = points from each signal (out of 100); hatched = deductions. Click a row for the
-    signal reasons and, where written, the AI case file.</p>
+    signal reasons and, where written, the AI case file. At most {PER_EVENT} alerts per event are listed (related
+    markets on one story); the strongest notes how many more that event has.</p>
   <div class="legend">{legend}</div>
   <div class="filters">{filters}</div>
   <div class="toolbar">

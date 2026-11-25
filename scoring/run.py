@@ -152,6 +152,14 @@ def build_rollups(con: duckdb.DuckDBPyConnection) -> None:
     The event key is the venue's event title where one exists, else the market question,
     so related markets ("…by March 31?", "…before divorce?") land together.
     """
+    # every position's event (related markets on one story) and its rank within that event —
+    # the review queue shows a few per event, so one surge cannot bury every other story
+    con.execute("""
+    CREATE OR REPLACE TABLE position_events AS
+    SELECT ps.position_id, coalesce(json_extract_string(m.metadata_json, '$.event_title'), ps.question) AS event_key,
+           row_number() OVER (PARTITION BY coalesce(json_extract_string(m.metadata_json, '$.event_title'), ps.question)
+                              ORDER BY ps.score DESC) AS event_rank
+    FROM position_scores ps JOIN markets m USING (market_id)""")
     con.execute(f"""
     CREATE OR REPLACE TABLE alert_events AS
     WITH a AS (
