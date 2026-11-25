@@ -26,12 +26,13 @@ Jensen Huang/NVIDIA position at #1. Reports the same days described suspicious c
 those markets.
 
 **Publicly reported cases.** The engine was run unchanged and saw trades only. Ranks are
-out of 8,249 positions (`uv run python -m eval.known_cases`):
+out of 9,376 positions (`uv run python -m eval.known_cases`):
 
 - Maduro (January 2026): #1
 - Nobel Peace Prize 2025: #4
-- Google Year in Search 2025: #7
-- 12 of the top 25 alerts come from case markets, which hold 16% of all positions.
+- Iran ceasefire, April 2026 (out of sample, added after the engine was frozen): #2
+- Google Year in Search 2025: #18
+- 20 of the top 25 alerts come from case markets, which hold 26% of all positions.
 
 **Live watch, replayed using only the data available at each moment**
 (`uv run python -m watch.live --replay`):

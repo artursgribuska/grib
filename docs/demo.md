@@ -21,7 +21,7 @@ Open `data/known_cases/dashboard/index.html` and look at the Nobel Peace Prize 2
   price from 3¢ to 75¢. The case file adds that the account was first seen at 21:26 UTC,
   about an hour before its first buy.
 - Make the key point: the engine was told nothing about this case. It ranked this position
-  #4 of 8,249, among ordinary markets.
+  #4 of 9,376, among ordinary markets.
 - Then the Maduro alert, which ranked #1. The case writer moved it from the rule-based
   Medium up to High and named its facts: 5 other flagged wallets on the event, and 8
   low-history buyers of the same long shot within 24 h.
@@ -67,7 +67,10 @@ sportsbook export in odds and stakes. The two planted accounts come out #1 and #
 ## Questions to expect
 
 - **"How do you know it works?"**
-  - Three publicly reported cases, ranked #1, #4 and #7 of 8,249.
+  - Four publicly reported cases, ranked #1, #2, #4 and #18 of 9,376. The #2 (Iran
+    ceasefire, April 2026) was added after the engine was frozen.
+  - The #1 alert matches the trading in the CFTC's first event-contract insider complaint
+    (436,760 Yes shares).
   - A planted-trade backtest: 82–84% of informed trades land in the top 1%.
   - Every engine change is checked against both.
   - README: *Validation on publicly reported cases*.

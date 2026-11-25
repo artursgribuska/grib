@@ -8,7 +8,9 @@ export through the same engine.
 
 **Does it work?** Run blind on markets behind publicly reported suspected-leak episodes, the
 unchanged engine ranked them **#1** (Maduro, January 2026), **#4** (Nobel Peace Prize 2025) and
-**#7** (Google Year in Search 2025) among 8,249 ordinary positions; on planted trades, 82–84% of
+**#2** (US–Iran ceasefire, April 2026, added after the engine was frozen) and **#18** (Google Year in
+Search 2025) among 9,376 positions; its #1 alert matches the trading in the CFTC's first
+event-contract insider complaint; on planted trades, 82–84% of
 informed buys land in the top 1%. See *Validation* below, `docs/demo.md` for a five-minute
 walkthrough and `docs/investor-brief.md` for the business case.
 
@@ -183,20 +185,23 @@ must out-rank everyday ones. The engine sees trades only — no names, times or 
 
     uv run python -m eval.known_cases     # ≈15 min first time; report in data/known_cases/report.md
 
-| Case (public reports) | Markets | Best rank of 8,249 | Alerts at threshold |
+| Case (public reports) | Markets | Best rank of 9,376 | Alerts at threshold |
 |---|---|---|---|
 | Maduro removed from power, January 2026 — "Maduro out by January 31" | 1 | **1** | 4 |
 | 2025 Nobel Peace Prize — winner's price jumped from 3¢ to 75¢ ten hours before the announcement | 1 | **4** | 3 |
-| Google Year in Search 2025 — ten "most searched" list events, all markets | 487 | **7** | 1 |
+| Google Year in Search 2025 — ten "most searched" list events, all markets | 487 | **18** | 1 |
+| US–Iran ceasefire, April 2026 — **out of sample**: added after the engine was frozen | 3 | **2** | 17 |
 
-12 of the top 25 alerts come from case markets, which hold 16% of positions. The reports are
+20 of the top 25 alerts come from case markets, which hold 26% of positions. The Iran case was
+added after all engine changes, as a test the engine could not have been tuned to; its 17 alerts
+also show the cost side: in a heavily anticipated event, reviewers would have many leads to clear. The reports are
 allegations and the accounts are pseudonymous: this is evidence about the engine, not about
 any person.
 
 **Match with a CFTC complaint.** The CFTC's first insider-trading complaint on event contracts
 (SDNY 26-cv-3369, April 2026) alleges the purchase of "more than 436,000 Yes shares" of
 "Maduro out by January 31, 2026?" between December 2025 and January 2026. The engine's #1
-alert of 8,249 is a position of **436,760 Yes shares** in that market, bought 31 December 2025 –
+alert is a position of **436,760 Yes shares** in that market, bought 31 December 2025 –
 3 January 2026 for $32,538. Identity cannot be confirmed from on-chain data and we do not try;
 market, share count, amount and dates match.
 
