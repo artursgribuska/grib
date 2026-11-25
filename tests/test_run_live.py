@@ -36,12 +36,16 @@ def test_live_run_records_new_alerts_once(tmp_path, monkeypatch):
                         lambda self, cid, max_rows=None, refresh=False: iter(sorted(TRADES, key=lambda r: -r["timestamp"])))
     import ingest.enrich
     monkeypatch.setattr(ingest.enrich, "enrich", lambda con, wallets: 0)
+    import app.notify
+    posted = []
+    monkeypatch.setattr(app.notify, "notify", lambda text: posted.append(text) or True)
     first = run_live.run(n_markets=10, now=NOW)
+    assert len(posted) == 1 and "long shot entry" in posted[0]
     assert first["markets"] == 1 and first["new"] == 1
     digest = (tmp_path / "live" / "watch.md").read_text()
     assert "long shot entry" in digest and "0x1111…1111" in digest and ("11" * 20) not in digest
     second = run_live.run(n_markets=10, now=NOW + timedelta(hours=3))
-    assert second["new"] == 0
+    assert second["new"] == 0 and len(posted) == 1          # nothing new: no message
     con = duckdb.connect(str(tmp_path / "live.duckdb"), read_only=True)
     assert con.execute("SELECT count(*) FROM watch_alerts").fetchone()[0] == 1
 

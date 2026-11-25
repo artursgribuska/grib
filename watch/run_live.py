@@ -2,6 +2,9 @@
 
     uv run python -m watch.run_live                 # ~150 most active open markets, last 7 days of trades
     uv run python -m watch.run_live --markets 50
+    uv run python -m watch.run_live --every 3        # keep running: a scan every 3 hours
+
+Set GRIB_ALERT_WEBHOOK_URL to post new alerts to a team channel (see app/notify.py).
 
 Each run: pick the most active open markets on Gamma (excluding sports and crypto price
 markets, where this method is blind by design), load their recent trades fresh (no cache)
@@ -18,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 
 import duckdb
@@ -129,7 +133,10 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
                         [a.kind, a.market_id, a.question, a.outcome, a.account_id, now, a.at, a.usd, a.avg_price, a.detail])
             new.append(a)
     con.close()
-    write_digest(new, len(pairs), n_trades, now)
+    text = write_digest(new, len(pairs), n_trades, now)
+    if new:
+        from app.notify import notify
+        notify(text)
     return {"markets": len(pairs), "trades": n_trades, "enriched": len(wallets), "alerts": len(alerts), "new": len(new)}
 
 
@@ -141,7 +148,9 @@ def write_digest(new, n_markets: int, n_trades: int, now: datetime) -> None:
     for a in sorted(new, key=lambda x: -x.usd):
         lines.append(f"- **{a.kind.replace('_', ' ')}** · {a.question} · '{a.outcome}' · {short_account(a.account_id)} · "
                      f"${a.usd:,.0f} at {a.avg_price:.2f} · {a.detail} · last activity {a.at:%Y-%m-%d %H:%M} UTC")
-    (OUT / "watch.md").write_text("\n".join(lines) + "\n")
+    text = "\n".join(lines) + "\n"
+    (OUT / "watch.md").write_text(text)
+    return text
 
 
 def main(argv=None) -> int:
@@ -149,11 +158,21 @@ def main(argv=None) -> int:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--markets", type=int, default=150)
+    ap.add_argument("--every", type=float, default=None, help="repeat every N hours (runs until stopped)")
     a = ap.parse_args(argv)
-    res = run(a.markets)
-    log.info("done: %s", json.dumps(res))
-    print((OUT / "watch.md").read_text())
-    return 0
+    while True:
+        try:
+            res = run(a.markets)
+            log.info("done: %s", json.dumps(res))
+            print((OUT / "watch.md").read_text())
+        except Exception:                  # a failed scan (network, API) must not end a long-running watch
+            if not a.every:
+                raise
+            log.exception("scan failed; retrying at the next interval")
+        if not a.every:
+            return 0
+        log.info("next scan in %.1f h", a.every)
+        time.sleep(a.every * 3600)
 
 
 if __name__ == "__main__":

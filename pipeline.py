@@ -132,8 +132,12 @@ def write_digest(con, run_id: int, timings: dict, alerts: set, new_rows: list, e
               "Anomalous activity warranting review — not findings of wrongdoing. Details: dashboard/index.html"]
     out = config.OUTPUT_DIR / "digest" / f"run-{run_id:04d}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("\n".join(lines) + "\n")
-    (out.parent / "latest.md").write_text("\n".join(lines) + "\n")
+    text = "\n".join(lines) + "\n"
+    out.write_text(text)
+    (out.parent / "latest.md").write_text(text)
+    if new_rows or error:
+        from app.notify import notify
+        notify(text)
     return out
 
 

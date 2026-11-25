@@ -272,7 +272,12 @@ nothing about fall back to what our sample has seen.
 **Running it live:** `uv run python -m watch.run_live` loads the ~150 most active open markets
 (sports and crypto excluded), their last 7 days of trades, enriches candidate accounts, scans,
 and writes new alerts to `data/live/watch.md` (each alert is recorded once, with the time it was
-first raised). Schedule it every few hours.
+first raised). Keep it running with `--every 3` (a scan every 3 hours; a failed scan is logged and
+retried at the next interval), or schedule single runs.
+
+**Notifications.** Set `GRIB_ALERT_WEBHOOK_URL` to a Slack-compatible incoming webhook and new
+live-watch alerts, and pipeline runs with new alerts, are posted to the channel (truncated wallets,
+as in the digests). Unset, nothing is sent.
 
 ## How it is organised
 
