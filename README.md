@@ -212,6 +212,29 @@ the public reports describe many modest wins across sibling markets (Google), th
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
 
+## Live watch: alerts before payout
+
+The engine above reviews markets after they resolve. `watch/live.py` runs on markets that are
+**still open**, using only trades up to the moment of the scan, so a venue can hold a withdrawal
+before it is paid out. Two patterns, both visible without knowing the winner:
+
+- **Long-shot entry**: a fresh or low-history account's *cumulative* buying of one outcome at
+  ≤ 20¢ reaches $10,000 or 5% of the market's buying in the last 7 days (cumulative, so
+  drip-buying in small chunks does not slip under the bar).
+- **Run-up initiator**: an outcome jumps by ≥ 20 points from ≤ 50¢ within 2 hours, and one
+  account did ≥ 40% of the buying that took it halfway up.
+
+Replayed over history with only the data available at each moment (`uv run python -m watch.live --replay`):
+
+| | First alert before the news | Alerts on the eventual winner / on other outcomes |
+|---|---|---|
+| Maduro, January 2026 | **90 hours** (the engine's #1 account: 16.6 h, once its drip-bought total passed $10k) | 6 / 0 |
+| Nobel Peace Prize 2025 | **10 hours** (the account that started the run-up, on its first $2,675 at 8¢) | 1 / 0 |
+| 200 ordinary markets, last 14 days each | 8.2 alerts per 1,000 market-days | alerted long shots won 25% vs 15% implied; run-up initiators 43% vs 30% |
+
+The ordinary-market samples are small (16 and 7 alerts): early evidence of signal, not a
+precision estimate. Live use needs open markets loaded (see the roadmap in `docs/investor-brief.md`).
+
 ## How it is organised
 
 | Folder    | What it does |
@@ -220,7 +243,8 @@ in our data is a very large, diversified trader whose positions look like market
 | `schema/` | The venue-agnostic canonical schema and the Polymarket → canonical mapper |
 | `signals/` | One module per detection signal; each returns a score, a reason and evidence |
 | `scoring/` | Feature tables (from canonical tables only) and the weighted score |
-| `eval/`   | Backtest (planted trades) and the known-cases study (publicly reported episodes) |
+| `eval/`   | Backtest (planted trades), the known-cases study (publicly reported episodes), watch replay |
+| `watch/`  | Live watch: alerts on open markets before the winner is known |
 | `app/`    | Static HTML dashboard and the analyst review loop (`app/review.py`) |
 | `pipeline.py` | One-command incremental run, run log and digest |
 | `examples/operator/` | Synthetic sportsbook export for the operator path |

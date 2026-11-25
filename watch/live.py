@@ -4,10 +4,12 @@ The main engine reviews resolved markets (it needs the winner). A compliance tea
 more value from an alert *before payout*, while withdrawals can still be held. Two
 patterns from the publicly reported cases are visible while a market is still open:
 
-  long_shot_entry   a fresh or low-history account buys a long shot heavily
-                    (avg price ≤ 0.20, ≥ $2,500, and ≥ 5% of the market's buying in the
-                    previous 7 days). Maduro, January 2026: a $32.5k buy at 0.07, 81 h
-                    before the news.
+  long_shot_entry   a fresh or low-history account builds a heavy long-shot position: its
+                    cumulative buying of one outcome (avg price ≤ 0.20, ≥ $2,500) reaches 5%
+                    of the market's buying in the previous 7 days, or $10,000. Cumulative, so
+                    drip-buying in small chunks does not slip under the bar. Maduro, January
+                    2026: an account that joined 5 days earlier bought 'Yes' at 7–10¢ in chunks
+                    of $85–7,215 over three days.
   run_up_initiator  an outcome's price jumps by ≥ 0.20 from ≤ 0.50 within 2 hours, and one
                     account did ≥ 40% (and ≥ $1,000) of the buying that took it halfway up.
                     Nobel Peace Prize 2025: one account did most of the buying that took the
@@ -35,7 +37,8 @@ import config
 # long-shot entry
 ENTRY_MAX_PRICE = 0.20
 ENTRY_MIN_USD = 2_500
-ENTRY_MIN_SHARE = 0.05          # of the market's buying (all outcomes) in the trailing window
+ENTRY_MIN_SHARE = 0.05          # of the market's buying (all outcomes) in the trailing window …
+ENTRY_ABS_USD = 10_000          # … or this much in total, whichever comes first
 ENTRY_WINDOW_H = 24 * 7
 FRESH_MAX_DAYS = 14             # "fresh": joined ≤ this long before the buy (venue join date) …
 LOW_HISTORY_MAX_MARKETS = 5     # … or has traded ≤ this many markets
@@ -109,22 +112,28 @@ def scan(con: duckdb.DuckDBPyConnection, as_of: datetime, market_ids: list[str] 
     for mid, g in recent.groupby("market_id"):
         full = t[t.market_id == mid]
         q = g.question.iloc[0]
-        # ---- long-shot entry: per account and outcome, buys in the lookback window
-        buys = g[(g.side == "buy")]
+        # ---- long-shot entry: per account and outcome, CUMULATIVE buys so far (fires when the
+        # latest buy is inside the lookback window, i.e. when the position grew)
         win = full[(full.side == "buy") & (full.ts > as_of - timedelta(hours=ENTRY_WINDOW_H))]
         market_buy = win.notional.sum()
-        for (acct, out), b in buys.groupby(["account_id", "outcome"]):
+        active = set(map(tuple, g[g.side == "buy"][["account_id", "outcome"]].drop_duplicates().values))
+        allbuys = full[full.side == "buy"]
+        for (acct, out), b in allbuys.groupby(["account_id", "outcome"]):
+            if (acct, out) not in active:
+                continue
             usd = b.notional.sum()
             if usd < ENTRY_MIN_USD:
                 continue
             px = usd / (b.notional / b.price).sum()
-            if px > ENTRY_MAX_PRICE or market_buy <= 0 or usd / market_buy < ENTRY_MIN_SHARE:
+            share = usd / market_buy if market_buy > 0 else 0.0
+            if px > ENTRY_MAX_PRICE or (share < ENTRY_MIN_SHARE and usd < ENTRY_ABS_USD):
                 continue
             low, why = _is_low_history(facts, acct, b.ts.min().to_pydatetime(), int(seen.get(acct, 1)))
             if not low:
                 continue
             alerts.append(WatchAlert("long_shot_entry", mid, q, out, acct, b.ts.max().to_pydatetime(), usd, px,
-                                     f"{why}; {usd / market_buy:.0%} of the market's buying in the last 7 days"))
+                                     f"{why}; ${usd:,.0f} so far in {len(b)} buy(s), {share:.0%} of the market's "
+                                     f"buying in the last 7 days"))
         # ---- run-up initiator: per outcome, hourly last price; a run-up ending inside the window
         for out, o in full.groupby("outcome"):
             p = o.set_index("ts").price.sort_index()
