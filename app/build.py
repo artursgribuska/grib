@@ -256,10 +256,14 @@ def live_watch_html(limit: int = 25) -> str:
 
 def known_cases_html() -> str:
     """Headline of the known-cases study (eval/known_cases.py), if it has been run."""
-    f = config.DATA_DIR / "known_cases" / "summary.json"
-    try:
-        sm = json.loads(f.read_text())
-    except (OSError, ValueError):
+    sm = None   # this dataset's own study first (known-cases / demo databases), else the main study
+    for f in (config.OUTPUT_DIR / "summary.json", config.DATA_DIR / "known_cases" / "summary.json"):
+        try:
+            sm = json.loads(f.read_text())
+            break
+        except (OSError, ValueError):
+            continue
+    if sm is None:
         return ""
     ev_txt = (f" Grouped into stories (one row per event), the case events rank "
               f"{', '.join('#' + str(r) for r in sm['event_ranks'])} of {sm['events']}." if sm.get("event_ranks") else "")
