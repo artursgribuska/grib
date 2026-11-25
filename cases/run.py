@@ -75,8 +75,17 @@ def main(argv=None) -> int:
     con.execute("SET enable_progress_bar = false")
     con.execute(DDL)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    ids = [r[0] for r in con.execute(
-        "SELECT position_id FROM position_scores ORDER BY score DESC LIMIT ?", [args.top]).fetchall()]
+    # same order as the dashboard's review queue: at most PER_EVENT alerts per event, so one surge
+    # does not take every case file
+    from app.build import PER_EVENT
+    tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
+    if "position_events" in tables:
+        ids = [r[0] for r in con.execute(
+            """SELECT ps.position_id FROM position_scores ps JOIN position_events pe USING (position_id)
+               WHERE pe.event_rank <= ? ORDER BY ps.score DESC LIMIT ?""", [PER_EVENT, args.top]).fetchall()]
+    else:
+        ids = [r[0] for r in con.execute(
+            "SELECT position_id FROM position_scores ORDER BY score DESC LIMIT ?", [args.top]).fetchall()]
 
     removed_files, removed_rows = prune_stale(con, ids, args.top)
     if removed_files or removed_rows:
