@@ -13,7 +13,7 @@ figure below can be reproduced with the command shown next to it.
 | Live watch on open markets | Working. First run: 150 markets, 287,939 trades, 6 alerts | `uv run python -m watch.run_live` |
 | Analyst review loop | Working. Dashboard decisions, audit trail, per-signal statistics | `uv run python -m app.review` |
 | Operator data (sportsbook CSV) | Working. Example in `examples/operator/` | `uv run python -m ingest.csv_loader` |
-| Tests | 105 passing | `uv run pytest` |
+| Tests | 106 passing | `uv run pytest` |
 
 ## What it shows
 
@@ -44,7 +44,8 @@ why the review queue groups alerts by event.
 - Maduro: flagged 16.6 hours before the news, on the same #1 account.
 - Nobel: flagged 10 hours before the announcement, on the account that started the price
   run-up.
-- Ordinary markets: 6.4 alerts per 1,000 market-days.
+- Iran ceasefire and US strikes on Iran (both out of sample): first alerts 6–14 days before.
+- Ordinary markets: 6.1 alerts per 1,000 market-days.
 
 **Planted trades** (`uv run python -m eval.backtest --markets 200 --seed 1`):
 
