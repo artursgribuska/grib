@@ -228,12 +228,19 @@ Replayed over history with only the data available at each moment (`uv run pytho
 
 | | First alert before the news | Alerts on the eventual winner / on other outcomes |
 |---|---|---|
-| Maduro, January 2026 | **90 hours** (the engine's #1 account: 16.6 h, once its drip-bought total passed $10k) | 6 / 0 |
-| Nobel Peace Prize 2025 | **10 hours** (the account that started the run-up, on its first $2,675 at 8¢) | 1 / 0 |
-| 200 ordinary markets, last 14 days each | 8.2 alerts per 1,000 market-days | alerted long shots won 25% vs 15% implied; run-up initiators 43% vs 30% |
+| Maduro, January 2026 | **16.6 hours**: the engine's #1 account (5 days old), once its drip-bought total passed $10k at 7¢ | 2 / 0 |
+| Nobel Peace Prize 2025 | **10 hours**: the account that started the run-up, on its first $2,675 at 8¢ | 1 / 0 |
+| 200 ordinary markets, last 14 days each | 6.4 alerts per 1,000 market-days | alerted long shots won 18% vs 15% implied; run-up initiators 43% vs 30% |
 
-The ordinary-market samples are small (16 and 7 alerts): early evidence of signal, not a
-precision estimate. Live use needs open markets loaded (see the roadmap in `docs/investor-brief.md`).
+The ordinary-market samples are small (11 and 7 alerts): the run-up edge is early evidence of
+signal, the long-shot edge is within noise. An account counts as fresh or low-history from the
+venue's own record (join date, lifetime markets) when known; only accounts the venue knows
+nothing about fall back to what our sample has seen.
+
+**Running it live:** `uv run python -m watch.run_live` loads the ~150 most active open markets
+(sports and crypto excluded), their last 7 days of trades, enriches candidate accounts, scans,
+and writes new alerts to `data/live/watch.md` (each alert is recorded once, with the time it was
+first raised). Schedule it every few hours.
 
 ## How it is organised
 

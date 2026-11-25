@@ -48,7 +48,8 @@ class DataApiClient:
     def __init__(self, http: CachedClient):
         self.http = http
 
-    def iter_market_trades(self, condition_id: str, max_rows: int | None = None) -> Iterator[dict]:
+    def iter_market_trades(self, condition_id: str, max_rows: int | None = None,
+                           refresh: bool = False) -> Iterator[dict]:
         """Every fill in a market, both sides (taker_only=false), newest first.
 
         The trades feed is a keyset walk: we re-send identical filters on every page
@@ -60,6 +61,7 @@ class DataApiClient:
             page = self.http.get_json(
                 f"{config.DATA_API}/trades",
                 {"condition": condition_id, "taker_only": "false", "limit": 1000, "cursor": cursor},
+                refresh=refresh,   # live monitoring must not reuse yesterday's cached page
             )
             rows = page.get("data") or []
             for r in rows:

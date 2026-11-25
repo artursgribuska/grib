@@ -73,16 +73,22 @@ def _account_facts(con) -> pd.DataFrame:
 
 
 def _is_low_history(facts: pd.DataFrame, acct: str, at: datetime, markets_seen: int) -> tuple[bool, str]:
+    """Fresh (joined ≤ FRESH_MAX_DAYS before `at`) or low-history (≤ LOW_HISTORY_MAX_MARKETS lifetime).
+    The venue's lifetime count, when known, is decisive; markets seen in our own data are only a
+    fallback for accounts the venue knows nothing about (with a small sample, almost every account
+    has been 'seen in few markets')."""
     if acct in facts.index:
         f = facts.loc[acct]
         if f.src == "venue_join_date" and pd.notna(f.first_seen_at):
             age = (at - f.first_seen_at.to_pydatetime()).total_seconds() / 86400
             if age <= FRESH_MAX_DAYS:
-                return True, f"account {age:.0f} days old"
-        if pd.notna(f.lifetime) and f.lifetime <= LOW_HISTORY_MAX_MARKETS:
-            return True, f"{int(f.lifetime)} markets traded"
+                return True, f"account {max(age, 0):.0f} days old"
+        if pd.notna(f.lifetime):
+            if f.lifetime <= LOW_HISTORY_MAX_MARKETS:
+                return True, f"{int(f.lifetime)} markets traded in its lifetime"
+            return False, ""
     if markets_seen <= LOW_HISTORY_MAX_MARKETS:
-        return True, f"{markets_seen} market(s) seen in our data"
+        return True, f"{markets_seen} market(s) seen in our data (venue history unknown)"
     return False, ""
 
 
