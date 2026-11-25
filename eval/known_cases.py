@@ -58,8 +58,13 @@ CASES = [
               "shortly before Google published its lists. All markets of the ten list events are loaded, so an "
               "account's wins and losses across sibling markets are both visible."},
     {"key": "maduro-2026", "events": ["maduro-out-in-2025"], "match": ["January 31"],
-     "about": "Maduro removed from power in January 2026: reports described a recently created account buying "
-              "'Maduro out' shortly before the US operation became public."},
+     "about": "Maduro removed from power in January 2026. The CFTC's first insider-trading complaint on event "
+              "contracts (SDNY 26-cv-3369, April 2026) alleges the purchase of more than 436,000 'Yes' shares of "
+              "this market between December 2025 and January 2026 on misappropriated non-public information."},
+    {"key": "iran-ceasefire-2026-04", "events": ["us-x-iran-ceasefire-by"], "match": ["April 7", "April 10", "April 15"],
+     "about": "US–Iran ceasefire announced in April 2026: a member of Congress asked the CFTC to investigate trades "
+              "placed shortly before the announcement, and Bubblemaps reported a cluster of linked accounts that made "
+              "about $1.4M on a ceasefire bet. Added after the engine was frozen: an out-of-sample test."},
 ]
 
 

@@ -17,6 +17,14 @@ figure below can be reproduced with the command shown next to it.
 
 ## What it shows
 
+**CFTC complaint match.** The engine's #1 alert is 436,760 "Yes" shares of "Maduro out by
+January 31, 2026?", bought 31 Dec 2025–3 Jan 2026. The CFTC's complaint (SDNY 26-cv-3369)
+alleges "more than 436,000 Yes shares" of that market in that period.
+
+**Prospective flag.** On 24 November, before any reporting was seen, the first run put a
+Jensen Huang/NVIDIA position at #1. Reports the same days described suspicious clusters on
+those markets.
+
 **Publicly reported cases.** The engine was run unchanged and saw trades only. Ranks are
 out of 8,249 positions (`uv run python -m eval.known_cases`):
 

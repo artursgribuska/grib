@@ -193,6 +193,21 @@ must out-rank everyday ones. The engine sees trades only — no names, times or 
 allegations and the accounts are pseudonymous: this is evidence about the engine, not about
 any person.
 
+**Match with a CFTC complaint.** The CFTC's first insider-trading complaint on event contracts
+(SDNY 26-cv-3369, April 2026) alleges the purchase of "more than 436,000 Yes shares" of
+"Maduro out by January 31, 2026?" between December 2025 and January 2026. The engine's #1
+alert of 8,249 is a position of **436,760 Yes shares** in that market, bought 31 December 2025 –
+3 January 2026 for $32,538. Identity cannot be confirmed from on-chain data and we do not try;
+market, share count, amount and dates match.
+
+**A prospective flag.** On 24 November 2026, before any of the changes described below and
+before we had seen any reporting, the first scoring run put a "Jensen Huang rejoins NVIDIA"
+position at #1 of 6,966 and grouped 5 flagged accounts (4 low-history) on that event. Reports
+published around then ([Benzinga](https://www.benzinga.com/markets/prediction-markets/26/11/63568662/20000-in-bets-350000-in-profit-suspicious-polymarket-clusters-nailed-jensen-huangs-nvidia-return),
+[Cryptopolitan](https://www.cryptopolitan.com/bubblemaps-flags-16-polymarket-accounts-that-won-350k-on-huangs-nvidia-return/))
+described clusters of accounts, several funded hours before the news, winning about $350k on
+Huang's return. We have not verified those reports beyond the trading itself.
+
 **What the study changed.** The first run missed most of the Nobel case, and the reasons were
 engine flaws, now fixed (each checked against the planted-trade backtest, which stayed at parity):
 
