@@ -101,6 +101,9 @@ rule-based starting risk rating, and the data limitations. The model
 timeline, evidence per signal, innocent explanations considered, risk rating with
 confidence, next steps and open questions.
 
+Each case is written as Markdown and as a printable `.html` (A4, self-contained: open it and
+use Print → Save as PDF to file it).
+
 A case file costs about 7.6¢ in model usage (average of 33: 11.3k input and 5.3k output
 tokens at Claude Sonnet 5.5 list prices); each run prints its spend.
 

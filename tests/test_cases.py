@@ -1,3 +1,4 @@
+import re
 import json
 from types import SimpleNamespace
 
@@ -116,3 +117,17 @@ def test_cost_is_computed_from_token_usage():
     from cases.writer import cost_usd
     assert cost_usd({"input_tokens": 1_000_000, "output_tokens": 100_000}) == 2.0 + 1.0
     assert cost_usd({}) is None and cost_usd({"input_tokens": 1}, model="unknown") is None
+
+
+def test_printable_case_file_is_self_contained_escaped_and_carries_checks():
+    from cases.printable import render_html
+    res = write_case(BUNDLE, FakeClient([_case("Paid $10,734 <b>now</b>.")]))
+    page = render_html(BUNDLE, res.case, {"model": "m", "unmatched": res.unmatched_numbers,
+                                          "language": res.language_problems})
+    for section in ("Summary", "Timeline", "Evidence", "Innocent explanations considered", "Risk rating",
+                    "Recommended next steps", "Open questions", "Data limitations"):
+        assert f"<h2>{section}</h2>" in page
+    assert "<b>now</b>" not in page and "&lt;b&gt;now" in page          # model text is escaped
+    assert "http" not in page.split("</head>")[0]                          # no external assets
+    assert "@page" in page and "Number check" in page
+    assert not re.search(r"0x[0-9a-fA-F]{40}", page)

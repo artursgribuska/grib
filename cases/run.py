@@ -19,6 +19,7 @@ import duckdb
 
 import config
 from cases.bundle import build_bundle, case_id
+from cases.printable import render_html
 from cases.writer import MissingApiKey, cost_usd, make_client, render_markdown, write_case
 
 OUT_DIR = config.OUTPUT_DIR / "cases"
@@ -107,16 +108,22 @@ def main(argv=None) -> int:
         bundle = build_bundle(con, pid)
         if existing.get(pid) == evidence_fingerprint(bundle):   # same evidence: re-export under the current rank
             stem = file_stem(rank, pid)
-            bj, md = con.execute("SELECT bundle_json, markdown FROM case_files WHERE position_id = ?", [pid]).fetchone()
+            bj, md, cj, model, unm, lang = con.execute(
+                """SELECT bundle_json, markdown, case_json, model, unmatched_numbers, language_problems
+                   FROM case_files WHERE position_id = ?""", [pid]).fetchone()
             (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(json.loads(bj), indent=1, ensure_ascii=False))
             if md:
                 (OUT_DIR / f"{stem}.md").write_text(md)
+            if cj:
+                (OUT_DIR / f"{stem}.html").write_text(render_html(json.loads(bj), json.loads(cj), {
+                    "model": model, "unmatched": json.loads(unm or "[]"), "language": json.loads(lang or "[]")}))
             print(f"{rank:>2}. kept    {stem} (evidence unchanged)")
             continue
         stem = file_stem(rank, pid)
         (OUT_DIR / f"{stem}.bundle.json").write_text(json.dumps(bundle, indent=1, ensure_ascii=False))
         if client is None:   # a case file written from older evidence must not sit next to the new bundle
             (OUT_DIR / f"{stem}.md").unlink(missing_ok=True)
+            (OUT_DIR / f"{stem}.html").unlink(missing_ok=True)
             print(f"{rank:>2}. bundle  {stem}  {bundle['market']['question'][:60]}")
             continue
         res = write_case(bundle, client)
@@ -124,6 +131,8 @@ def main(argv=None) -> int:
         spent += cost_usd(res.usage) or 0.0
         md = render_markdown(bundle, res)
         (OUT_DIR / f"{stem}.md").write_text(md)
+        (OUT_DIR / f"{stem}.html").write_text(render_html(bundle, res.case, {
+            "model": res.model, "unmatched": res.unmatched_numbers, "language": res.language_problems}))
         con.execute("INSERT OR REPLACE INTO case_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
             pid, datetime.now(timezone.utc).replace(tzinfo=None), res.model,
             res.case["risk_rating"]["level"], res.case["risk_rating"]["confidence"], res.checks_passed,
