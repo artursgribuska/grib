@@ -218,22 +218,24 @@ def live_watch_html(limit: int = 25) -> str:
         return ""
     try:
         con = duckdb.connect(str(db), read_only=True)
-        rows = con.execute("""SELECT kind, question, outcome, account_id, first_alerted_at, usd, avg_price, detail
-                              FROM watch_alerts ORDER BY first_alerted_at DESC, usd DESC LIMIT ?""", [limit]).fetchall()
+        rows = con.execute("""SELECT kind, question, outcome, account_id, first_alerted_at, activity_at, usd, avg_price,
+                                     detail FROM watch_alerts
+                              ORDER BY first_alerted_at DESC, activity_at DESC LIMIT ?""", [limit]).fetchall()
         n = con.execute("SELECT count(*), count(DISTINCT market_id) FROM watch_alerts").fetchone()
         con.close()
     except duckdb.Error:          # missing table, or the live run holds the file right now
         return ""
     body = "".join(
         f"<tr><td>{e(k.replace('_', ' '))}</td><td>{e(q)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
-        f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(t)[:16])}</td><td>{e(d)}</td></tr>"
-        for k, q, o, a, t, u, p, d in rows) or "<tr><td colspan=6 class=muted>No alerts yet</td></tr>"
+        f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(act)[:16])}<small>raised {e(str(t)[:16])}</small></td>"
+        f"<td>{e(d)}</td></tr>"
+        for k, q, o, a, t, act, u, p, d in rows) or "<tr><td colspan=6 class=muted>No alerts yet</td></tr>"
     return f"""
   <section><h2>Live watch — open markets</h2>
     <p class="muted">Alerts on markets that have not resolved yet, raised before anyone knows the winner
       ({n[0]} alerts across {n[1]} markets so far). Leads for review, not findings.</p>
     <div class="scroll"><table><thead><tr><th>Alert</th><th>Market</th><th>Position</th><th>Avg price</th>
-      <th>Raised (UTC)</th><th>Why</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
+      <th>Last activity (UTC)</th><th>Why</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
 
 
 def known_cases_html() -> str:
