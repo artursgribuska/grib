@@ -44,6 +44,17 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 11. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
 12. `uv run pytest` — run the tests
 
+## Running on a server
+
+A `Dockerfile` runs the live watch on a schedule (a scan every 3 hours) with `data/` mounted so
+the databases persist:
+
+    docker build -t integrity-analyst .
+    docker run -d -v $PWD/data:/app/data -e GRIB_ANTHROPIC_API_KEY -e GRIB_ALERT_WEBHOOK_URL integrity-analyst
+    docker run --rm -v $PWD/data:/app/data -e GRIB_ANTHROPIC_API_KEY integrity-analyst python -m pipeline
+
+Tests run on every push (`.github/workflows/ci.yml`); they need no network and no API key.
+
 ## Your own data (operators)
 
 An operator can run the same engine on its own bet export (milestone 5). Prepare up to three
