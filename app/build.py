@@ -211,6 +211,31 @@ def rollups(d: dict) -> str:
     <tbody>{wl_rows}</tbody></table></div></section>"""
 
 
+def live_watch_html(limit: int = 25) -> str:
+    """Open-market alerts from the live watch (watch/run_live.py), newest first, if it has run."""
+    db = config.DATA_DIR / "live.duckdb"
+    if not db.exists():
+        return ""
+    try:
+        con = duckdb.connect(str(db), read_only=True)
+        rows = con.execute("""SELECT kind, question, outcome, account_id, first_alerted_at, usd, avg_price, detail
+                              FROM watch_alerts ORDER BY first_alerted_at DESC, usd DESC LIMIT ?""", [limit]).fetchall()
+        n = con.execute("SELECT count(*), count(DISTINCT market_id) FROM watch_alerts").fetchone()
+        con.close()
+    except duckdb.Error:          # missing table, or the live run holds the file right now
+        return ""
+    body = "".join(
+        f"<tr><td>{e(k.replace('_', ' '))}</td><td>{e(q)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
+        f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(t)[:16])}</td><td>{e(d)}</td></tr>"
+        for k, q, o, a, t, u, p, d in rows) or "<tr><td colspan=6 class=muted>No alerts yet</td></tr>"
+    return f"""
+  <section><h2>Live watch — open markets</h2>
+    <p class="muted">Alerts on markets that have not resolved yet, raised before anyone knows the winner
+      ({n[0]} alerts across {n[1]} markets so far). Leads for review, not findings.</p>
+    <div class="scroll"><table><thead><tr><th>Alert</th><th>Market</th><th>Position</th><th>Avg price</th>
+      <th>Raised (UTC)</th><th>Why</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
+
+
 def known_cases_html() -> str:
     """Headline of the known-cases study (eval/known_cases.py), if it has been run."""
     f = config.DATA_DIR / "known_cases" / "summary.json"
@@ -344,6 +369,7 @@ def render(d: dict) -> str:
     <div class="stat"><b>{n_markets:,}</b>markets</div><div class="stat"><b>{n_trades:,}</b>trade rows</div>
     <div class="stat"><b>{n_pos:,}</b>positions scored</div><div class="stat"><b>{n_alert:,}</b>at/above review threshold ({ALERT_THRESHOLD:.0f})</div>
   </div>
+  {live_watch_html() if config.DB_PATH == config.DATA_DIR / "integrity.duckdb" else ""}
   <h2>Top {len(d['alerts'])} alerts</h2>
   <p class="muted">Bar length = points from each signal (out of 100); hatched = deductions. Click a row for the
     signal reasons and, where written, the AI case file.</p>

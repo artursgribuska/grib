@@ -44,3 +44,17 @@ def test_live_run_records_new_alerts_once(tmp_path, monkeypatch):
     assert second["new"] == 0
     con = duckdb.connect(str(tmp_path / "live.duckdb"), read_only=True)
     assert con.execute("SELECT count(*) FROM watch_alerts").fetchone()[0] == 1
+
+
+def test_dashboard_shows_live_alerts(tmp_path, monkeypatch):
+    import config
+    from app.build import live_watch_html
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    assert live_watch_html() == ""
+    con = duckdb.connect(str(tmp_path / "live.duckdb"))
+    con.execute(run_live.ALERTS_DDL)
+    con.execute("INSERT INTO watch_alerts VALUES ('long_shot_entry','m','Will <X> win?','Yes',?,?,?,12000,0.07,'fresh')",
+                ["0x" + "ab" * 20, NOW, NOW])
+    con.close()
+    html = live_watch_html()
+    assert "Live watch" in html and "&lt;X&gt;" in html and ("ab" * 20) not in html and "$12,000" in html
