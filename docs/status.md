@@ -96,8 +96,8 @@ window. Details are in the README and the commit history.
   so such items are timed at the end of the following day and never count as preceding a buy.
   Failed searches are marked as failed and retried, never reported as "no news".
 - **The live watch** needs scheduling (every few hours) to protect payouts in practice. Its
-  prospective scorecard has 6 alerts and none resolved yet; the replayed equivalent (5 of 17 won
-  vs 3.6 implied) is in the right direction but not significant.
+  prospective scorecard has 6 alerts and none resolved yet. Replayed out of sample (402 markets) the
+  flagged side won 11 of 19 vs 7.6 implied (p = 0.035): modest, with small counts.
 - **Free news sources are best effort.** On 26 November GDELT refused most requests with HTTP 429
   for minutes at a time (the Google News fallback now covers that). A production version should
   add a paid, minute-precise wire source.

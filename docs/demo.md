@@ -100,8 +100,9 @@ public trades.
   reviewer decisions measure precision per signal.
 - **"Has it ever flagged something before the outcome was known?"** Yes, by design: the live
   watch runs on open markets, and every alert is followed up once its market resolves
-  (`./grib scorecard`). On replayed ordinary markets the flagged side won 5 of 17 against 3.6
-  implied by the prices: the right direction, not yet significant. Say so plainly.
+  (`./grib scorecard`). Replayed on 402 markets never used to design it, the flagged side won 11 of
+  19 times against 7.6 implied by the prices paid (one-sided p = 0.035). Modest, real, and growing
+  with the live scorecard. Say so plainly.
 - **"Sports?"** This is a deliberate blind spot for this method: everyone trades sports
   late. Match-fixing needs other data.
 - **"Kalshi already has Solidus."** Yes. Our customers are the second tier of new venues,

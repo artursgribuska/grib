@@ -318,6 +318,14 @@ feed appears to keep about two months of trades), and
 one page per top market (`data/kalshi/screen/`): the winner's price path around the public moment
 and what drove the score. A screened market is worth a closer look, not a finding.
 
+**Do live alerts carry information?** `uv run python -m eval.watch_volume` (with `--exclude-db` for
+out-of-sample runs) replays the live watch on every ordinary market of a database and asks whether
+alerted sides win more often than the prices paid implied. On 402 markets never used in any design
+decision, they did: 11 of 19 against 7.6 (one-sided p = 0.035; 16 of 33 against 10.7 across all 535
+in-scope markets). Caveats: a normal approximation on small counts; several alerts on one market are
+not independent; and a win is never evidence about any individual account. The account-free watch
+below shows no such edge, which is the case for using account data where a venue has it.
+
 ## Account-free live watch (Kalshi)
 
 `watch/flow.py` raises a `flow_surge` alert from anonymous trades: a long shot (≤ 0.35) rises at least
@@ -370,7 +378,9 @@ Replayed over history with only the data available at each moment (`uv run pytho
 | Nobel Peace Prize 2025 | **10 hours**: the account that started the run-up, on its first $2,675 at 8¢ | 1 / 0 |
 | US–Iran ceasefire, April 2026 (**out of sample**) — "by April 7" / "by April 15" | **248 h** / **158 h**: accounts 0 and 1 days old buying at 11–15¢ | 6 / 2 and 4 / 0 |
 | US strikes on Iran, February 2026 (**out of sample**) — "by February 28" | **336 h** (the start of the 14-day replay window): an account 0 days old at 12¢ | 21 / 0; none of the losing "next strike on [date]" markets fired |
-| 200 ordinary markets, last 14 days each | 6.1 alerts per 1,000 market-days | alerted long shots won 20% vs 16% implied; run-up initiators 43% vs 30%; together 5 of 17 vs 3.6 implied (z +0.8: not significant yet) |
+| 200 ordinary markets, last 14 days each | 6.1 alerts per 1,000 market-days | alerted long shots won 20% vs 16% implied; run-up initiators 43% vs 30%; together 5 of 17 vs 3.6 implied (z +0.8: not significant) |
+| **402 further markets, never used in any design decision** (out of sample) | 3.4 per 1,000 market-days (watch scope) | **the flagged side won 11 of 19 vs 7.6 implied by the prices paid: z +1.8, one-sided p = 0.035** |
+| All 535 in-scope markets of the 600-market sample | 4.4 per 1,000 market-days | 16 of 33 vs 10.7 implied: z +2.2, p = 0.013 |
 
 The ordinary-market samples are small (11 and 7 alerts): the run-up edge is early evidence of
 signal, the long-shot edge is within noise. An account counts as fresh or low-history from the

@@ -29,10 +29,11 @@ from watch.run_live import SKIP_CATEGORIES
 STEP_H = 6
 
 
-def ordinary_markets(con) -> pd.DataFrame:
+def ordinary_markets(con, exclude: set[str] | None = None) -> pd.DataFrame:
     tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
     excl = "WHERE market_id NOT IN (SELECT market_id FROM known_case_markets)" if "known_case_markets" in tables else ""
-    return con.execute(f"SELECT market_id, category FROM market_state {excl}").df()
+    m = con.execute(f"SELECT market_id, category FROM market_state {excl}").df()
+    return m[~m.market_id.isin(exclude)] if exclude else m
 
 
 def replay_all(con, markets: pd.DataFrame) -> pd.DataFrame:
@@ -61,8 +62,8 @@ def summarise(a: pd.DataFrame, n_markets: int) -> dict:
                         for k, g in a.groupby("kind")} if len(a) else {}}
 
 
-def report(con) -> tuple[str, dict]:
-    m = ordinary_markets(con)
+def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
+    m = ordinary_markets(con, exclude)
     a = replay_all(con, m)
     scope_m = m[~m.category.isin(SKIP_CATEGORIES)]
     res = {"watch_scope": summarise(a[a.market_id.isin(scope_m.market_id)] if len(a) else a, len(scope_m)),
@@ -87,14 +88,25 @@ def report(con) -> tuple[str, dict]:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.parse_args(argv)
+    ap.add_argument("--exclude-db", action="append", default=[],
+                    help="leave out markets present in this database (e.g. earlier samples), for an out-of-sample test")
+    ap.add_argument("--name", default="watch_volume")
+    a = ap.parse_args(argv)
+    exclude = set()
+    for path in a.exclude_db:
+        c = duckdb.connect(path, read_only=True)
+        exclude |= {r[0] for r in c.execute("SELECT market_id FROM markets").fetchall()}
+        c.close()
     con = duckdb.connect(str(config.DB_PATH), read_only=True)
-    text, res = report(con)
+    text, res = report(con, exclude or None)
     con.close()
-    out = config.OUTPUT_DIR / "watch_volume.md"
+    if exclude:
+        text = text.replace("# Live watch on ordinary markets", f"# Live watch on ordinary markets (excluding {len(exclude)} "
+                            "markets from earlier samples)", 1)
+    out = config.OUTPUT_DIR / f"{a.name}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)
-    (config.OUTPUT_DIR / "watch_volume.json").write_text(json.dumps(res, indent=2))
+    (config.OUTPUT_DIR / f"{a.name}.json").write_text(json.dumps(res, indent=2))
     print(text)
     print(f"(written to {out})")
     return 0
