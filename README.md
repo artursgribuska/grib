@@ -331,13 +331,13 @@ P-values are exact (Poisson-binomial). Caveats: small counts, one sample period,
 evidence about any individual account. The account-free watch
 below shows no such edge, which is the case for using account data where a venue has it.
 
-**What kind of information?** Not necessarily non-public. Triaging the 33 historical alerts blind
-(`eval/triage_eval.py`) showed where the edge sits: established, active accounts that started sharp
-price moves won 9 of 12 times against 4.9 implied. That is consistent with skill as much as with
-non-public information, and trading data alone cannot tell them apart. The pattern closest to the
-reported cases, a fresh account building a long-shot position, is rarer: the 3 alerts the AI marked
-"escalate" won 2 times against 0.4 implied. The watch finds sharp money; deciding whether it was
-informed is the reviewer's job, which is why the case file and the human decision exist.
+**What kind of information?** Not necessarily non-public. By alert type, across the 535 in-scope
+markets: run-up initiators, which need no fresh account and are often established, active traders,
+won 12 of 20 times against 8.9 implied; long-shot entries by fresh or low-history accounts, the
+pattern of the reported cases, won 4 of 13 against 1.9, about twice their odds. Beating the odds is
+consistent with skill as much as with non-public information, and trading data alone cannot tell them
+apart. The watch finds sharp money fast; deciding whether it was informed is the reviewer's job,
+which is why the case file and the human decision exist.
 
 ## Account-free live watch (Kalshi)
 
