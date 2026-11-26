@@ -20,8 +20,10 @@ declare -A CMD=(
   [known-cases]="eval.known_cases|Validation on publicly reported cases"
   [replay]="watch.live|Replay the live watch on history (--replay)"
   [categories]="eval.category_index|Category index: categories compared on behaviour alone"
+  [screen]="scoring.market_screen|Market screen: rank markets without account ids"
+  [screen-cases]="eval.screen_cases|Market screen on the known cases"
 )
-ORDER="demo pipeline score funding news cases dossiers dashboard review watch scorecard operator backtest known-cases replay categories"
+ORDER="demo pipeline score funding news cases dossiers dashboard review watch scorecard operator backtest known-cases replay categories screen screen-cases"
 
 if [[ $# -eq 0 || "$1" == "help" || "$1" == "-h" || "$1" == "--help" ]]; then
   echo "usage: ./grib <command> [options]     (./grib <command> --help for its options)"

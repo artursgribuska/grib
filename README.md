@@ -268,6 +268,21 @@ the public reports describe many modest wins across sibling markets (Google), th
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
 
+## Market screen: venues without account ids
+
+Some venues publish trades without accounts (Kalshi's public feed), and some operators can share
+only anonymised trades. `scoring/market_screen.py` ranks resolved markets using each trade's time,
+outcome, side, price and size only: cheap buying of the eventual winner in the 48 hours before the
+public moment, the winner's price drift, the trading surge, and how one-sided the buying was, plus
+the same 10% category prior as the position engine.
+
+On the known-cases universe, with **no account ids at all**, the reported stories rank **#1, #2, #3,
+#4 and #15 of 129** (Google, ceasefire, Nobel, strikes, Maduro; `uv run python -m eval.screen_cases`).
+The full engine, which sees accounts, ranks them 1, 2, 4, 5 and 7. Disclosure: the feature weights
+were set before the evaluation; the category prior was added after seeing that without it sports and
+tweet-count markets crowd the top (raw ranks 1, 2, 8, 14, 25). A screened market is worth a closer
+look, not a finding.
+
 ## Category index
 
 `uv run python -m eval.category_index` re-scores every position **without** its category points and
