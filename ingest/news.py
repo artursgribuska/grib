@@ -183,7 +183,10 @@ ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS time_precision VARCHAR;
 """
 
 
-def process_market(client, http, m) -> tuple[dict, list[dict]]:
+def process_market(client, http, m, gdelt_ok: list | None = None) -> tuple[dict, list[dict]]:
+    """gdelt_ok: a one-item list shared across a run; once GDELT fails, later markets skip it
+    (each failure costs minutes of retries) and go straight to Google News."""
+    gdelt_ok = gdelt_ok if gdelt_ok is not None else [True]
     start = m.first_flagged_buy.to_pydatetime() - timedelta(hours=LOOKBACK_H)
     end = m.certainty_at.to_pydatetime() + timedelta(hours=AFTER_PUBLIC_H)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -198,7 +201,10 @@ def process_market(client, http, m) -> tuple[dict, list[dict]]:
         row["status"] = f"query error: {str(e)[:80]}"
         return row, []
     row["query"], row["reveal"] = q["query"], q["what_news_would_reveal_it"]
-    arts = gdelt(http, q["query"], start, end) if in_gdelt_window else None
+    arts = gdelt(http, q["query"], start, end) if in_gdelt_window and gdelt_ok[0] else None
+    if in_gdelt_window and gdelt_ok[0] and arts is None:
+        gdelt_ok[0] = False
+        log.warning("GDELT unreachable: using Google News for the rest of this run")
     row["source"] = "gdelt"
     if arts is None:   # GDELT unreachable, or the window is older than it can search: try Google News
         arts, row["source"] = google_news(http, q["query"], start, end), "google_news"
@@ -245,8 +251,9 @@ def run(con, client=None, http: CachedClient | None = None, refresh: bool = Fals
             log.warning("news search skipped: %s", e)
             return {"markets": len(tg), "processed": 0, "skipped": "no API key"}
     http = http or CachedClient()
+    gdelt_ok = [True]
     for i, m in enumerate(todo, 1):
-        row, arts = process_market(client, http, m)
+        row, arts = process_market(client, http, m, gdelt_ok)
         con.execute("DELETE FROM news_queries WHERE market_id = ?", [m.market_id])
         con.execute("DELETE FROM news_articles WHERE market_id = ?", [m.market_id])
         con.register("_q", pd.DataFrame([row]))

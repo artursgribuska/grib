@@ -174,3 +174,15 @@ def test_windows_older_than_gdelt_go_straight_to_google_news():
     row, arts = news.process_market(FakeClaude(), http, m)
     assert http.gdelt_calls == 0 and http.google_calls == 1
     assert row["status"] == "ok" and row["source"] == "google_news" and arts == []
+
+
+def test_gdelt_failure_trips_breaker_for_the_rest_of_the_run():
+    from datetime import datetime
+    import pandas as pd
+    now = datetime.now()
+    m = SimpleNamespace(market_id="x", question="q", winner="Yes", category="personnel",
+                        first_flagged_buy=pd.Timestamp(now - timedelta(days=3)), certainty_at=pd.Timestamp(now - timedelta(days=2)))
+    http, ok = GoogleOnlyHttp([]), [True]
+    news.process_market(FakeClaude(), http, m, ok)
+    news.process_market(FakeClaude(), http, m, ok)
+    assert ok == [False] and http.gdelt_calls == 1 and http.google_calls == 2
