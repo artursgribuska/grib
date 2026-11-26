@@ -284,7 +284,11 @@ def screen_html(s, top: int = 10) -> str:
     """The account-free market screen (scoring/market_screen.py): a second view, by market."""
     if s is None or s.empty:
         return ""
-    rows = "".join(f"<tr><td class=num>{i}</td><td class=num>{r.score:.1f}</td><td>{e(r.question)}"
+    from app.dossier import slug
+    def name(r):
+        page = config.OUTPUT_DIR / "screen" / f"{slug(r.question + ' ' + r.market_id)}.html"
+        return f'<a href="../screen/{e(page.name)}">{e(r.question)}</a>' if page.exists() else e(r.question)
+    rows = "".join(f"<tr><td class=num>{i}</td><td class=num>{r.score:.1f}</td><td>{name(r)}"
                    f"<small>{e(r.category.replace('_', ' '))}</small></td><td class=num>{r.cheap_flow:.1%}</td>"
                    f"<td class=num>{r.rise:+.2f}</td><td class=num>{r.one_sided:.0%}</td>"
                    f"<td class=num>${r.market_volume_pre:,.0f}</td></tr>"

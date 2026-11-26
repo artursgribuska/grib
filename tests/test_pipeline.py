@@ -20,7 +20,7 @@ def test_pipeline_scores_records_run_and_writes_digest(tmp_path, monkeypatch):
     assert pipeline.main(["--skip-ingest", "--no-funding", "--no-news", "--no-cases"]) == 0
     con = duckdb.connect(str(db))
     run = con.execute("SELECT run_id, ok, steps, alerts_at_threshold, new_alerts FROM pipeline_runs").fetchone()
-    assert run[0] == 1 and run[1] is True and set(json.loads(run[2])) == {"score", "dossiers", "dashboard"}
+    assert run[0] == 1 and run[1] is True and set(json.loads(run[2])) == {"score", "dossiers", "screen", "dashboard"}
     assert run[3] >= 1 and len(json.loads(run[4])) == run[3]          # first run: every alert is new
     con.close()
     digest = (tmp_path / "digest" / "latest.md").read_text()

@@ -78,7 +78,7 @@ def build_all(con, top: int = 10, out_dir=None) -> list:
     s = ms.screen(con).head(top)
     made = []
     for r in s.itertuples():
-        f = out_dir / f"{slug(r.market_id + ' ' + r.question)}.html"
+        f = out_dir / f"{slug(r.question + ' ' + r.market_id)}.html"
         f.write_text(market_page(con, r))
         made.append((r, f))
     rows = "".join(f'<tr><td class=num>{i}</td><td class=num>{r.score:.1f}</td><td><a href="{e(f.name)}">{e(r.question)}</a>'

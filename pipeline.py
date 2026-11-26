@@ -61,8 +61,9 @@ def run(args) -> dict:
     if not args.no_cases:
         from cases import run as cases_run
         steps.append(("cases", lambda: cases_run.main(["--top", str(args.cases), "--only-new"])))
-    from app import build, dossier
+    from app import build, dossier, screen_pages
     steps.append(("dossiers", lambda: dossier.main([])))     # before the dashboard, which links to them
+    steps.append(("screen", lambda: screen_pages.main([])))
     steps.append(("dashboard", lambda: build.main([])))
 
     con = _db()
