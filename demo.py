@@ -62,16 +62,22 @@ def main(argv=None) -> int:
     cases_run.OUT_DIR = kc.OUT / "cases"
     cases_run.main(["--top", str(a.cases)])
 
-    print("5/5 dashboard …", flush=True)
-    from app import build
+    print("5/5 event dossiers, market screen and dashboard …", flush=True)
+    from app import build, dossier
+    from eval.screen_cases import event_ranks
     con = duckdb.connect(str(kc.DB), read_only=True)
+    dossier.build_all(con, top=10, out_dir=kc.OUT / "dossiers")
+    sc, n_ev, _ = event_ranks(con)
     out = build.build(con, out=kc.OUT / "dashboard" / "index.html")
     con.close()
+    screen_line = ("Market screen, no account ids: " + ", ".join(f"{c} #{int(r)}" for c, r in zip(sc["case"], sc.event_rank))
+                   + f" of {n_ev} events.")
 
     print("\n" + "\n".join(l for l in report.splitlines() if "best rank" in l or "Event view" in l or l.startswith("## ")))
     print("\n" + "\n".join(l for l in replay.splitlines() if l.startswith("## ") or l.startswith("First")))
+    print("\n" + screen_line)
     print(f"\nDone in {(time.time() - t0) / 60:.0f} min. Open {out}\n"
-          f"Report: {kc.OUT / 'report.md'} · Replay: {kc.OUT / 'watch_replay.md'}")
+          f"Report: {kc.OUT / 'report.md'} · Replay: {kc.OUT / 'watch_replay.md'} · Dossiers: {kc.OUT / 'dossiers' / 'index.html'}")
     return 0
 
 
