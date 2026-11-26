@@ -1,7 +1,6 @@
 """Wallet funding: scan windows, scanning with a fake RPC, links into scoring and bundles."""
 from datetime import datetime, timedelta
 
-import pandas as pd
 import pytest
 
 from ingest import funding

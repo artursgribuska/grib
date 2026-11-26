@@ -47,7 +47,7 @@ def top_events(con, n: int) -> list[str]:
 
 
 def load_event(con, event_key: str) -> dict:
-    pos = con.execute(f"""
+    pos = con.execute("""
         SELECT ps.*, pe.event_rank, s.market_volume_pre
         FROM position_scores ps JOIN position_events pe USING (position_id)
         JOIN market_state s USING (market_id)

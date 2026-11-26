@@ -163,7 +163,7 @@ def report() -> str:
             GROUP BY 1 ORDER BY 2""").df()
         if len(ev):
             n_events = int(ev.n.iloc[0])
-            lines += [f"**Event view** (one row per story, ranked by its strongest position): "
+            lines += ["**Event view** (one row per story, ranked by its strongest position): "
                       + ", ".join(f"{c} #{int(r)}" for c, r in zip(ev["case"], ev["rank"]))
                       + f" of {n_events} events.", ""]
             summary["event_ranks"] = [int(r) for r in ev["rank"]]
@@ -205,7 +205,7 @@ def report() -> str:
                          f"${p.position_notional:,.0f} | {p.avg_price:.2f} | {p.first_buy_ts:%Y-%m-%d %H:%M} | {lead:,.1f} | {tops} |")
         lines.append("")
         if len(cm) > 1:   # accounts with several winning long shots across the case's markets
-            multi = con.execute(f"""
+            multi = con.execute("""
                 SELECT account_id, count(*) AS wins, sum(buy_notional) AS usd,
                        sum(buy_notional) / sum(buy_size) AS px
                 FROM positions_all

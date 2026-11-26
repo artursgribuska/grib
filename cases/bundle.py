@@ -262,7 +262,7 @@ def funding_context(con, acct: str) -> dict:
     direct = con.execute("SELECT DISTINCT b FROM funding_edges WHERE a = ? AND kind = 'direct'", [acct]).fetchall()
     for (w,) in direct:
         linked.setdefault(w, "direct transfer")
-    flagged = dict(con.execute(f"""SELECT account_id, max(score) FROM position_scores
+    flagged = dict(con.execute("""SELECT account_id, max(score) FROM position_scores
                                     WHERE account_id IN (SELECT unnest(?)) GROUP BY 1""", [list(linked)]).fetchall()) if linked else {}
     out["wallets_sharing_a_personal_funder"] = [
         {"display_id": short_account(w), "via": via, "highest_alert_score": _num(flagged.get(w), 1)}

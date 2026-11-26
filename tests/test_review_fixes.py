@@ -1,5 +1,5 @@
 """Regression tests for issues found in code review (operator data, news, pipeline, prices)."""
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import duckdb
 import pandas as pd

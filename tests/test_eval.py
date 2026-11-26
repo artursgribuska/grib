@@ -1,7 +1,6 @@
 """Backtest planting and stale case-file pruning, on the synthetic venue from test_features."""
 import json
 
-import pytest
 
 from tests.test_features import build_db
 

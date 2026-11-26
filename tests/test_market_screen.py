@@ -67,7 +67,6 @@ def test_sibling_public_moment_and_deadline_decay():
 
 
 def test_screen_pages_render(tmp_path):
-    import re
     from scoring.features import build_features
     from app.screen_pages import build_all
     con = _mini()

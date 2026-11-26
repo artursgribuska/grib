@@ -138,7 +138,7 @@ class Rpc:
     def block_at(self, ts: int) -> int:
         """Last block at or before unix time `ts` (secant search on real block headers)."""
         head = self.head()
-        hi_n, hi_t = head, self.block_ts(head)
+        hi_t = self.block_ts(head)
         if ts >= hi_t:
             return head
         n = max(0, head - int((hi_t - ts) / SECONDS_PER_BLOCK))
