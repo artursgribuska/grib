@@ -277,11 +277,20 @@ public moment, the winner's price drift, the trading surge, and how one-sided th
 the same 10% category prior as the position engine.
 
 On the known-cases universe, with **no account ids at all**, the reported stories rank **#1, #2, #3,
-#4 and #15 of 129** (Google, ceasefire, Nobel, strikes, Maduro; `uv run python -m eval.screen_cases`).
-The full engine, which sees accounts, ranks them 1, 2, 4, 5 and 7. Disclosure: the feature weights
-were set before the evaluation; the category prior was added after seeing that without it sports and
-tweet-count markets crowd the top (raw ranks 1, 2, 8, 14, 25). A screened market is worth a closer
-look, not a finding.
+#14 and #19 of 126** (Google, Nobel, strikes, Maduro, ceasefire; `uv run python -m eval.screen_cases`).
+The full engine, which sees accounts, ranks them 1, 2, 4, 5 and 7: accounts matter most for slow,
+drip-fed positions such as Maduro's. Disclosures: the feature weights were set before the evaluation.
+Two rules came after looking at results. The category prior was added because without it sports and
+tweet-count markets crowd the top (ranks then 1, 7, 12, 22, 23). A story's public moment became the
+earliest certainty among sibling markets with the same result, after a Kalshi run showed post-news
+trading in slower siblings being counted. That second rule *lowered* the ceasefire case from #2 to #19,
+because its earlier rank had counted trading after the 7 April announcement. A 'No' that became certain
+within 72 hours of its deadline gets no price-drift credit (time ran out in public view).
+
+`uv run python -m ingest.kalshi --markets 200` loads recently settled Kalshi markets (Kalshi's public
+feed appears to keep about two months of trades), and
+`GRIB_DB_PATH=data/kalshi.duckdb uv run python -m scoring.market_screen --rebuild` screens them
+(`data/kalshi/market_screen.md`). A screened market is worth a closer look, not a finding.
 
 ## Category index
 

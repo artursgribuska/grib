@@ -20,7 +20,7 @@ figure below can be reproduced with the command shown next to it.
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 122 passing | `./grib test` |
+| Tests | 123 passing | `./grib test` |
 
 ## What it shows
 
@@ -46,7 +46,7 @@ ranking (10,908 positions), the February strikes flood the list with 167 alerts,
 why the review queue groups alerts by event.
 
 **Without account ids.** The market screen sees only each trade's time, side, price and size. On the
-same universe it ranks the reported stories #1, #2, #3, #4 and #15 of 129 (`./grib screen-cases`). This is what
+same universe it ranks the reported stories #1, #2, #3, #14 and #19 of 126 (`./grib screen-cases`). This is what
 a venue with an anonymised feed, such as Kalshi's public trades, could run.
 
 **Live watch, replayed using only the data available at each moment**

@@ -4,11 +4,14 @@ Some venues publish trades without accounts (Kalshi's public feed), and some ope
 share only anonymised trades. The position engine needs accounts; this screen needs only
 each trade's time, outcome, side, price and size, so it runs on any venue.
 
-For each resolved market, with c = the moment the outcome became public (est., from prices):
+For each resolved market, with c = the moment the outcome became public (est., from prices; for
+a story with several markets, such as "out before Oct 20 / Oct 24 / Nov 1", the earliest moment
+among siblings with the same result settled within 3 days, so post-news trading in a slower sibling is not counted):
 
   cheap_flow   buying of the eventual winner at a winner price ≤ 0.35 in the 48 hours before c
                (ending 1 hour before), as a share of all volume traded before c
-  rise         how far the winner's price drifted up over those 48 hours, from ≤ 0.60
+  rise         how far the winner's price drifted up over those 48 hours, from ≤ 0.60 (no credit
+               when a 'No' became certain within 72 hours of its deadline: time ran out in public)
   surge        trading rate in those 48 hours against the market's earlier rate (log ratio)
   one_sided    the winner's share of all buying in those 48 hours
 
@@ -39,6 +42,8 @@ CHEAP = 0.35
 RISE_FROM_MAX = 0.60
 MIN_PRE_VOLUME = 5_000
 WEIGHTS = {"cheap_flow": 0.35, "rise": 0.25, "surge": 0.20, "one_sided": 0.20}
+SIBLING_DAYS = 3             # sibling markets settled within this many days share the story's public moment
+DEADLINE_H = 72              # a 'No' certain within this long of its deadline gets no price-drift credit
 CATEGORY_SHARE = 0.10        # the category prior's share of the score, the same weight as in the position engine
 
 
@@ -46,12 +51,26 @@ def features(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     """One row per resolved market with enough pre-public volume. Needs trades_w / market_state
     (scoring.features.build_features)."""
     return con.execute(f"""
-        WITH s AS (
-            SELECT venue, market_id, question, category, certainty_at, first_trade_ts, market_volume_pre,
-                   certainty_at - INTERVAL {WINDOW_H + GAP_H} HOUR AS w0,
-                   certainty_at - INTERVAL {GAP_H} HOUR AS w1
-            FROM market_state
-            WHERE market_volume_pre >= {MIN_PRE_VOLUME} AND certainty_at > first_trade_ts),
+        WITH ms AS (
+            SELECT s.*, m.closes_at,
+                   coalesce(json_extract_string(m.metadata_json, '$.event_title'), s.market_id) AS event_key
+            FROM market_state s JOIN markets m USING (venue, market_id)),
+        pub AS (    -- the story's public moment: the earliest certainty among siblings with the same result, settled together
+            SELECT a.venue, a.market_id, least(a.certainty_at, min(b.certainty_at)) AS public_at
+            FROM ms a LEFT JOIN ms b ON b.venue = a.venue AND b.event_key = a.event_key
+                 AND b.winning_outcome = a.winning_outcome
+                 AND abs(epoch(b.resolved_at - a.resolved_at)) <= {SIBLING_DAYS} * 86400
+            GROUP BY a.venue, a.market_id, a.certainty_at),
+        s AS (
+            SELECT ms.venue, ms.market_id, ms.question, ms.category, p.public_at AS certainty_at, ms.first_trade_ts,
+                   ms.market_volume_pre,
+                   -- a 'No' that became certain close to its deadline ran out of time in public view
+                   (ms.winning_outcome = 'No' AND ms.closes_at IS NOT NULL
+                    AND epoch(ms.closes_at - p.public_at) <= {DEADLINE_H} * 3600) AS deadline_decay,
+                   p.public_at - INTERVAL {WINDOW_H + GAP_H} HOUR AS w0,
+                   p.public_at - INTERVAL {GAP_H} HOUR AS w1
+            FROM ms JOIN pub p USING (venue, market_id)
+            WHERE ms.market_volume_pre >= {MIN_PRE_VOLUME} AND p.public_at > ms.first_trade_ts),
         w AS (
             SELECT s.venue, s.market_id,
                    sum(t.notional / t.fill_rows) FILTER (WHERE t.ts >= s.w0 AND t.ts < s.w1) AS win_vol,
@@ -69,7 +88,8 @@ def features(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
         SELECT s.venue, s.market_id, s.question, s.category, s.certainty_at, s.market_volume_pre,
                coalesce(w.win_vol, 0) AS window_volume,
                coalesce(w.cheap_buy, 0) / s.market_volume_pre AS cheap_flow,
-               CASE WHEN coalesce(w.p_start, w.p_first) <= {RISE_FROM_MAX}
+               s.deadline_decay,
+               CASE WHEN NOT s.deadline_decay AND coalesce(w.p_start, w.p_first) <= {RISE_FROM_MAX}
                     THEN greatest(coalesce(w.p_end, 0) - coalesce(w.p_start, w.p_first), 0) ELSE 0 END AS rise,
                CASE WHEN coalesce(w.base_vol, 0) > 0 AND coalesce(w.win_vol, 0) > 0
                          AND epoch(s.w0 - s.first_trade_ts) > 24 * 3600
@@ -106,6 +126,7 @@ def main(argv=None) -> int:
     con.close()
     text = report(s, a.top)
     out = config.OUTPUT_DIR / "market_screen.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text)
     print(text)
     print(f"(written to {out})")

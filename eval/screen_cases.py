@@ -56,8 +56,11 @@ Top 10 markets:
 
 The feature weights were set before this evaluation. The category prior's 10% share mirrors the
 position engine; it was added to the screen after seeing that, without it, sports and tweet-count
-markets crowd the top (raw event ranks then were 1, 2, 8, 14, 25). Markets flagged here are worth a
-closer look, not findings.
+markets crowd the top (without it the event ranks are 1, 7, 12, 22, 23). The public moment of a story with
+several markets is the earliest certainty among siblings with the same result: this was added after a
+Kalshi run showed post-news trading in a slower sibling counted as "before public". It lowered the
+ceasefire case from #2 to #19, because its earlier rank had counted trading after the 7 April
+announcement. Markets flagged here are worth a closer look, not findings.
 """
 
 
