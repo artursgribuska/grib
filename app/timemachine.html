@@ -28,6 +28,7 @@ h1{font-size:clamp(28px,4.4vw,44px);line-height:1.1;margin:6px 0 8px;letter-spac
 .tabs button{border:1px solid var(--grid);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;
   font:inherit;font-size:14px;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.tabs button.control{border-style:dashed;color:var(--ink2)}.tabs button.control[aria-selected="true"]{color:var(--surface)}
 .card{background:var(--surface);border:1px solid var(--grid);border-radius:14px;box-shadow:var(--shadow)}
 .q{padding:16px 18px 4px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
 .q h2{font-size:19px;margin:0;font-weight:600}
@@ -48,7 +49,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .price{fill:none;stroke:var(--price);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .dot{fill:var(--flag);stroke:var(--surface);stroke-width:2}
 .public{stroke:var(--ink2);stroke-width:1.5;stroke-dasharray:5 4}
-.publbl{fill:var(--ink2);font-size:11px}
+.publbl{fill:var(--ink2);font-size:11px;stroke:var(--surface);stroke-width:4px;paint-order:stroke;stroke-linejoin:round}
 .alertline{stroke:var(--alert);stroke-width:1.5}.alertflag{fill:var(--alert)}
 .playhead{stroke:var(--ink);stroke-width:1;opacity:.55}
 .bar-o{fill:var(--other)}.bar-f{fill:var(--flag)}
@@ -277,6 +278,7 @@ function buildAfter() {
     d.append(b, sp); facts.appendChild(d); };
   if (s.event_rank) add(`#${s.event_rank}${s.tied ? " (tied)" : ""} of ${s.events}`, "stories ranked by the engine, with no names, dates or wallets given");
   if (s.first_alert_lead !== null) add(dur(s.first_alert_lead * 36e5), "between the first live-watch alert on the winning side and the news");
+  else if (C.control) add("No alert", "the live watch stayed quiet, replayed every two hours with only the trades available then");
   add(`${s.flagged}`, `accounts flagged on this market (${money(s.flagged_usd)} in positions)`);
   if (s.top_score !== null) add(`${s.top_score}`, `top engine score (${s.top_id}); review threshold 50`);
   const c = $("cftc"); c.hidden = !s.cftc;
@@ -317,10 +319,13 @@ function load(i) {
   $("price-title").textContent = `Implied chance of '${C.winner}', the eventual winner`;
   size(); drawPrice(); drawBars(); buildFeed(); buildAfter(); render();
   try { localStorage.setItem("tm-case", String(i)); } catch (e) {}
+  if (location.hash !== "#" + C.key) history.replaceState(null, "", "#" + C.key);
 }
 
 DATA.forEach((c, i) => { const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "tab");
+  if (c.control) b.className = "control";
   b.textContent = c.title; b.addEventListener("click", () => load(i)); $("tabs").appendChild(b); });
+addEventListener("hashchange", () => { const i = DATA.findIndex(c => "#" + c.key === location.hash); if (i >= 0 && DATA[i] !== C) load(i); });
 $("play").addEventListener("click", () => setPlaying(!playing));
 $("scrub").addEventListener("input", e => { t = C.start + (C.end - C.start) * e.target.value / 1000; render(); });
 document.addEventListener("keydown", e => { if (e.target.tagName === "SELECT") return;
@@ -331,7 +336,8 @@ $("theme").addEventListener("click", () => { const r = document.documentElement;
   r.dataset.theme = dark ? "light" : "dark"; });
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { const w0 = W; size();
   if (W !== w0) { drawPrice(); drawBars(); render(); } }, 120); });
-let start = 0; try { start = Number(localStorage.getItem("tm-case")) || 0; } catch (e) {}
+let start = DATA.findIndex(c => "#" + c.key === location.hash);
+if (start < 0) { start = 0; try { start = Number(localStorage.getItem("tm-case")) || 0; } catch (e) {} }
 load(Math.min(start, DATA.length - 1));
 </script>
 </body>

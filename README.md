@@ -280,7 +280,10 @@ in our data is a very large, diversified trader whose positions look like market
 self-contained page. Pick a reported case and press play: the winner's price, who was buying it
 (flagged accounts against everyone else), each flagged account's first buy, and the moment the live
 watch would have raised its alert, using only the trades available then, with a countdown to the
-news. At the public moment the page shows what the engine concluded afterwards. Hover for details;
+news. At the public moment the page shows what the engine concluded afterwards. A fifth tab shows
+an ordinary market for comparison, picked by rule (leak-prone category, no link to any reported
+story, the biggest price move before the news, nothing flagged): the price moves there too, and the
+watch stays quiet. Each tab has a link of its own (`timemachine.html#maduro-2026`). Hover for details;
 space plays and pauses; the arrow keys step. It reads `data/known_cases.duckdb`, so run
 `eval.known_cases` first.
 

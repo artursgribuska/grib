@@ -65,8 +65,36 @@ def pick_market(con, key: str) -> str:
         GROUP BY 1 ORDER BY sum(position_notional) DESC, max(score) DESC LIMIT 1""", [key]).fetchone()[0]
 
 
-def case_data(con, key: str, facts, seen, ranks: dict, n_events: int) -> dict:
-    mid = pick_market(con, key)
+LEAK_PRONE = ("personnel", "government_military", "corporate", "awards_entertainment")
+UNRELATED = r"iran|maduro|venezuela|nobel|searched"     # the control must not touch any reported story
+
+
+def control_candidates(con, n: int = 8) -> list[str]:
+    """Ordinary markets for the control tab: leak-prone category, not a reported case, the winner's price
+    rose sharply before the public moment, yet no position reached the flag line. Biggest rise first."""
+    from scoring.market_screen import features
+    f = features(con)
+    calm = con.execute(f"""SELECT market_id FROM market_state WHERE market_id NOT IN (SELECT market_id FROM known_case_markets)
+                           AND market_id NOT IN (SELECT market_id FROM position_scores WHERE score >= {ROLLUP_MIN_SCORE})""").df()
+    f = f[f.market_id.isin(calm.market_id) & f.category.isin(LEAK_PRONE) & (f.rise >= 0.3)
+          & ~f.question.str.contains(UNRELATED, case=False, regex=True)]
+    return list(f.sort_values(["rise", "market_volume_pre"], ascending=False).market_id.head(n))
+
+
+def market_event_rank(con, mid: str) -> tuple[int | None, bool]:
+    r = con.execute("""
+        WITH e AS (SELECT pe.event_key, max(ps.score) AS best FROM position_scores ps
+                   JOIN position_events pe USING (position_id) GROUP BY 1),
+             r AS (SELECT event_key, rank() OVER (ORDER BY best DESC) AS rank,
+                          count(*) OVER (PARTITION BY best) > 1 AS tied FROM e)
+        SELECT min(r.rank), bool_or(r.tied) FROM position_scores ps JOIN position_events pe USING (position_id)
+        JOIN r USING (event_key) WHERE ps.market_id = ?""", [mid]).fetchone()
+    return (int(r[0]), bool(r[1])) if r and r[0] is not None else (None, False)
+
+
+def case_data(con, key: str, facts, seen, ranks: dict, n_events: int, mid: str | None = None,
+              title: str | None = None, about: str | None = None) -> dict:
+    mid = mid or pick_market(con, key)
     q, winner, public = con.execute(
         "SELECT question, winning_outcome, certainty_at FROM market_state WHERE market_id = ?", [mid]).fetchone()
     fl = con.execute(f"""
@@ -124,11 +152,11 @@ def case_data(con, key: str, facts, seen, ranks: dict, n_events: int) -> dict:
     watch = [{"t": _ms(a.at), "kind": a.kind.replace("_", " "), "id": short_account(a.account_id), "usd": round(float(a.usd)),
               "px": round(float(a.avg_price), 3), "detail": a.detail, "lead": round(float(a.hours_before_public), 1),
               "winner": bool(a.on_winner)} for a in alerts.itertuples()] if len(alerts) else []
-    about = next(c["about"] for c in CASES if c["key"] == key)
+    about = about or next(c["about"] for c in CASES if c["key"] == key)
     first_win = next((w for w in watch if w["winner"]), None)
     top = fl.iloc[0] if len(fl) else None
     return {
-        "key": key, "title": dict(SHOWN)[key], "question": q, "winner": winner, "about": about,
+        "key": key, "title": title or dict(SHOWN)[key], "control": key == "control", "question": q, "winner": winner, "about": about,
         "out_of_sample": key in OUT_OF_SAMPLE, "start": _ms(start), "end": _ms(end), "public": _ms(public),
         "bucket_min": bucket,
         "series": [[_ms(t), round(float(p), 4), round(float(f)), round(float(o))]
@@ -153,11 +181,25 @@ def build(con, out: Path | None = None) -> Path:
                                              JOIN position_scores ps USING (market_id)
                                              WHERE ps.score >= {ROLLUP_MIN_SCORE}""").fetchall()}
     data = [case_data(con, k, facts, seen, ranks, n_events) for k, _ in SHOWN if k in present]
+    for mid in control_candidates(con):          # the control: first candidate where the watch stays quiet
+        rank = market_event_rank(con, mid)
+        c = case_data(con, "control", facts, seen, {"control": rank}, n_events, mid=mid, title="For comparison: an ordinary market",
+                      about=CONTROL_ABOUT)
+        if not c["watch"]:
+            data.append(c)
+            break
     html = TEMPLATE.replace("__DATA__", json.dumps(data, separators=(",", ":")).replace("</", "<\\/"))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html)
     return out
 
+
+CONTROL_ABOUT = ("Not the subject of any report: an ordinary market from the same universe, picked by rule (a leak-prone "
+                 "category, no link to any reported story, the biggest price move towards the winner before the outcome became "
+                 "public, and no position "
+                 "the engine flagged). The price moves before the news here too, but no account's buying looks like the cases' "
+                 "and the live watch stays quiet. Early price moves are common; what sets the cases apart is who was buying, "
+                 "how early and how cheaply.")
 
 TEMPLATE = (Path(__file__).parent / "timemachine.html").read_text()
 
