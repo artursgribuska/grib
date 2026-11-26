@@ -80,5 +80,9 @@ def report(con) -> str:
         implied = g.avg_price.mean()
         lines.append(f"- {kind.replace('_', ' ')}: {len(g)} alerts; the alerted side won **{g.on_winner.mean():.0%}** "
                      f"of the time, against an average entry price (the market's implied chance) of {implied:.0%}.")
+    from watch.follow_up import excess_wins
+    x = excess_wins(a.assign(won=a.on_winner))
+    lines.append(f"- All kinds: the alerted side won **{x['wins']} of {x['resolved']}**; the prices paid implied "
+                 f"{x['expected_wins']:.1f} (z = {x['z']:+.1f}; the same test the live scorecard runs).")
     lines.append("")
     return "\n".join(lines) + "\n"
