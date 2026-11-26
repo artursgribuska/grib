@@ -33,3 +33,18 @@ def test_deadline_is_scheduled_not_early_close():
     assert early["closes_at"].year == 2045
     sched = map_market({**base, "close_time": "2026-10-01T03:59:00Z", "latest_expiration_time": "2026-10-08T14:00:00Z"}, EV)
     assert sched["closes_at"].isoformat() == "2026-10-01T03:59:00"
+
+
+def test_open_market_mapping_and_digest(tmp_path, monkeypatch):
+    from datetime import datetime
+    from watch import kalshi_live
+    from watch.flow import FlowAlert
+    m = {"ticker": "T", "title": "Will Y resign?", "yes_sub_title": "Yes", "market_type": "binary", "result": "",
+         "close_time": "2026-12-01T00:00:00Z", "latest_expiration_time": "2026-12-08T00:00:00Z"}
+    r = kalshi_live.map_open_market(m, EV)
+    assert r["winning_outcome"] is None and r["resolved_at"] is None and r["question"] == "Will Y resign?"
+    assert kalshi_live.map_open_market({**m, "market_type": "scalar"}, EV) is None
+    monkeypatch.setattr(kalshi_live, "OUT", tmp_path)
+    a = FlowAlert("T", "Will Y resign?", "Yes", datetime(2026, 11, 25, 19), 0.2, 0.45, 7000, 0.9, 12.0)
+    text = kalshi_live.digest([a], 100, 5000, datetime(2026, 11, 26))
+    assert "1 new alert" in text and "0.20 → 0.45" in text and (tmp_path / "watch.md").exists()

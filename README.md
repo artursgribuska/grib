@@ -318,6 +318,29 @@ feed appears to keep about two months of trades), and
 one page per top market (`data/kalshi/screen/`): the winner's price path around the public moment
 and what drove the score. A screened market is worth a closer look, not a finding.
 
+## Account-free live watch (Kalshi)
+
+`watch/flow.py` raises a `flow_surge` alert from anonymous trades: a long shot (≤ 0.35) rises at least
+0.15 in 6 hours, with at least 70% of all buying and $5,000 of it, while the market trades at 5× its
+usual rate. `uv run python -m watch.kalshi_live` runs it on the ~100 most active open Kalshi markets
+(sports, crypto and financial prices excluded); `--every 3` keeps it running, and new alerts go to
+`data/kalshi_live/watch.md` and the team channel. First live run: 100 markets, 59,035 trades, 1 alert.
+
+The thresholds were fixed before the first evaluation (`uv run python -m eval.flow_replay`). Results:
+
+| Test | Result |
+|---|---|
+| Reported cases, accounts ignored | Fired on the winner before the news for the strikes (0.9 h), the ceasefire (20.6 h) and Google (2.3 h); no alerts on losing outcomes. **Missed Maduro and Nobel.** |
+| Why Maduro was missed | The informed buying was drip-fed over three days, with no surge. The account-level watch catches it (16.6 h ahead). |
+| Why Nobel was missed | Polymarket stores both counterparties of each fill, which caps "share of buying" near 50–65% even in the 3¢→75¢ run-up (trading at 840× its usual rate). Kalshi's rows are taker buys only, so there the measure means what it says. |
+| Ordinary markets | 2.4–2.5 alerts per 1,000 market-days (Polymarket 200 and 600 markets, Kalshi 200 settled markets). |
+| Do alerted outcomes win more than their price said? | **No.** Polymarket 600 markets: 14 wins vs 16.2 implied (z −1.3); Kalshi: 5 vs 4.9. |
+
+So the account-free watch is a **timeliness tool**: it tells a venue without account data, within hours,
+that money is moving hard and one-sidedly into a long shot, which is when a hold can still matter. It
+does not by itself separate informed money from news. That needs accounts, which is the case for
+venues sharing them with the full engine.
+
 ## Category index
 
 `uv run python -m eval.category_index` re-scores every position **without** its category points and

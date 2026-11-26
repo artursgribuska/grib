@@ -18,6 +18,8 @@ scorecard|watch.follow_up|How earlier live alerts turned out
 alert-pages|app.live_pages|One page per live alert (data/live/alerts/)
 operator|ingest.csv_loader|Load an operator bet export (CSV)
 kalshi|ingest.kalshi|Load settled Kalshi markets (trades without accounts)
+kalshi-watch|watch.kalshi_live|Account-free live watch on open Kalshi markets (--every 3)
+flow-replay|eval.flow_replay|Replay the account-free watch on history
 backtest|eval.backtest|Planted-trade backtest
 known-cases|eval.known_cases|Validation on publicly reported cases
 timemachine|app.timemachine|Before the news: interactive replay of the reported cases

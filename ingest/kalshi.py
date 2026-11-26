@@ -53,7 +53,7 @@ def map_market(m: dict, ev: dict) -> dict | None:
         return None
     title = m.get("title") or ev.get("title") or ""
     sub = m.get("yes_sub_title")
-    question = title if not sub or sub in title else f"{title} ({sub})"
+    question = title if not sub or sub in title or sub.lower() in ("yes", "no") else f"{title} ({sub})"
     kcat = ev.get("category") or ""
     meta = {"ticker": m.get("ticker"), "event_ticker": ev.get("event_ticker"), "series_ticker": ev.get("series_ticker"),
             "event_title": ev.get("title"), "kalshi_category": kcat, "trade_rows_per_fill": 1,
@@ -95,12 +95,14 @@ def iter_settled_events(http: CachedClient, max_pages: int = 50, refresh: bool =
             return
 
 
-def iter_trades(http: CachedClient, ticker: str, max_rows: int = 300_000):
-    """All trades of a settled market (immutable, so cached)."""
+def iter_trades(http: CachedClient, ticker: str, max_rows: int = 300_000, min_ts: int | None = None,
+                refresh: bool = False):
+    """Trades of a market, newest first. Settled markets are immutable, so cached; an open market's
+    trades are fetched fresh (refresh=True), optionally only those after unix time `min_ts`."""
     cursor, n = None, 0
     while n < max_rows:
         page = http.get_json(f"{config.KALSHI_API}/markets/trades",
-                             {"ticker": ticker, "limit": 1000, "cursor": cursor})
+                             {"ticker": ticker, "limit": 1000, "cursor": cursor, "min_ts": min_ts}, refresh=refresh)
         rows = page.get("trades") or []
         yield from rows
         n += len(rows)
