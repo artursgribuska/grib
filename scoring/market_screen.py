@@ -104,11 +104,32 @@ def main(argv=None) -> int:
         build_features(con)
     s = screen(con)
     con.close()
-    print(f"{len(s)} markets screened (≥ ${MIN_PRE_VOLUME:,} traded before the public moment)\n")
-    for i, r in enumerate(s.head(a.top).itertuples(), 1):
-        print(f"{i:>3}. {r.score:5.1f}  {r.category[:14]:<14} cheap {r.cheap_flow:5.1%}  rise {r.rise:+.2f}  "
-              f"surge {r.surge:+.1f}  1-sided {r.one_sided:4.0%}  {r.question[:70]}")
+    text = report(s, a.top)
+    out = config.OUTPUT_DIR / "market_screen.md"
+    out.write_text(text)
+    print(text)
+    print(f"(written to {out})")
     return 0
+
+
+def report(s: pd.DataFrame, top: int = 20) -> str:
+    rows = "\n".join(
+        f"| {i} | {r.score:.1f} | {r.category.replace('_', ' ')} | {r.question} | {r.cheap_flow:.1%} | {r.rise:+.2f} | "
+        f"{r.surge:+.1f} | {r.one_sided:.0%} | ${r.market_volume_pre:,.0f} |"
+        for i, r in enumerate(s.head(top).itertuples(), 1))
+    return f"""# Market screen
+
+{len(s)} resolved markets screened (≥ ${MIN_PRE_VOLUME:,} traded before the outcome became public). No account
+information is used. Window: the {WINDOW_H} hours before the public moment (est.), ending {GAP_H} hour before it.
+
+| # | Score | Category | Market | Cheap winner buying | Winner price drift | Surge (log) | Winner share of buying | Volume before public |
+|---:|---:|---|---|---:|---:|---:|---:|---:|
+{rows}
+
+*Cheap winner buying*: buying of the eventual winner at ≤ {CHEAP:.2f}, as a share of all volume before the
+public moment. A high score means money moved early and cheaply onto the eventual winner shortly before
+the outcome became public: a market worth a closer look, not a finding.
+"""
 
 
 if __name__ == "__main__":

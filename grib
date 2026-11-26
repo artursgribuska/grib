@@ -16,6 +16,7 @@ declare -A CMD=(
   [watch]="watch.run_live|Live watch on open markets (--every 3 to keep running)"
   [scorecard]="watch.follow_up|How earlier live alerts turned out"
   [operator]="ingest.csv_loader|Load an operator's bet export (CSV)"
+  [kalshi]="ingest.kalshi|Load settled Kalshi markets (trades without accounts)"
   [backtest]="eval.backtest|Planted-trade backtest"
   [known-cases]="eval.known_cases|Validation on publicly reported cases"
   [replay]="watch.live|Replay the live watch on history (--replay)"
@@ -23,7 +24,7 @@ declare -A CMD=(
   [screen]="scoring.market_screen|Market screen: rank markets without account ids"
   [screen-cases]="eval.screen_cases|Market screen on the known cases"
 )
-ORDER="demo pipeline score funding news cases dossiers dashboard review watch scorecard operator backtest known-cases replay categories screen screen-cases"
+ORDER="demo pipeline score funding news cases dossiers dashboard review watch scorecard operator kalshi backtest known-cases replay categories screen screen-cases"
 
 if [[ $# -eq 0 || "$1" == "help" || "$1" == "-h" || "$1" == "--help" ]]; then
   echo "usage: ./grib <command> [options]     (./grib <command> --help for its options)"

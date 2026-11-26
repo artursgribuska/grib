@@ -18,7 +18,9 @@ GAMMA_API = "https://gamma-api.polymarket.com"
 
 # Politeness: maximum requests per second per host, and retry policy.
 REQUESTS_PER_SECOND = {"data-api.polymarket.com": 4.0, "gamma-api.polymarket.com": 3.0,
-                       "api.gdeltproject.org": 0.2}   # GDELT asks for at most one request per 5 s
+                       "api.gdeltproject.org": 0.2,   # GDELT asks for at most one request per 5 s
+                       "api.elections.kalshi.com": 3.0}
+KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
 MAX_RETRIES = 6
 HTTP_TIMEOUT_S = 30.0
 USER_AGENT = "integrity-analyst-demo/0.1 (research; public data)"
