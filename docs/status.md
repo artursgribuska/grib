@@ -20,7 +20,7 @@ figure below can be reproduced with the command shown next to it.
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 128 passing | `./grib test` |
+| Tests | 129 passing | `./grib test` |
 
 ## What it shows
 
@@ -85,14 +85,16 @@ window. Details are in the README and the commit history.
   than single large bets.
 - **Older wallet funding** needs a paid archive RPC node: 37 of 82 wallets in the demo
   could not be scanned.
-- **GDELT news** covers only the last ~3 months. It also rate-limits; failed searches are
-  marked as failed and retried, never reported as "no news".
+- **News** comes from GDELT, with Google News as the fallback when GDELT is unreachable or the
+  window is older than GDELT's ~3 months. Google's dates are often day-precise and can be a day early,
+  so such items are timed at the end of the following day and never count as preceding a buy.
+  Failed searches are marked as failed and retried, never reported as "no news".
 - **The live watch** needs scheduling (every few hours) to protect payouts in practice. Its
   prospective scorecard has 6 alerts and none resolved yet; the replayed equivalent (5 of 17 won
   vs 3.6 implied) is in the right direction but not significant.
-- **GDELT is unreliable as the only news source.** On 26 November most requests were refused with
-  HTTP 429 for minutes at a time. Failures are recorded as "news source unreachable", never as "no
-  news", but a production version needs a second, paid news source.
+- **Free news sources are best effort.** On 26 November GDELT refused most requests with HTTP 429
+  for minutes at a time (the Google News fallback now covers that). A production version should
+  add a paid, minute-precise wire source.
 - **Kalshi's public feed** appears to keep only about two months of trades and has no accounts, so
   only the market screen applies, and only to recently settled markets.
 

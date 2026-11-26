@@ -74,7 +74,11 @@ class CachedClient:
                 self._limiters[host] = RateLimiter(config.REQUESTS_PER_SECOND.get(host, 2.0))
             return self._limiters[host]
 
-    def get_json(self, url: str, params: dict | None = None, refresh: bool = False):
+    def get_text(self, url: str, params: dict | None = None, refresh: bool = False) -> str:
+        """Like get_json for non-JSON bodies (RSS, XML); cached the same way."""
+        return self.get_json(url, params, refresh, _text=True)
+
+    def get_json(self, url: str, params: dict | None = None, refresh: bool = False, _text: bool = False):
         params = {k: v for k, v in (params or {}).items() if v is not None}
         path = self._cache_path(url, params)
         if path.exists() and not refresh:
@@ -95,7 +99,7 @@ class CachedClient:
                 self._backoff(attempt, None)
                 continue
             if resp.status_code == 200:
-                payload = resp.json()
+                payload = resp.text if _text else resp.json()
                 path.parent.mkdir(parents=True, exist_ok=True)
                 tmp = path.with_suffix(".tmp")
                 tmp.write_text(json.dumps(payload))

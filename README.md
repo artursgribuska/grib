@@ -44,7 +44,7 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 5. `uv run python -m scoring.run` — scores every candidate position and prints the top 25 alerts
 6. `uv run python -m ingest.funding`, then `uv run python -m scoring.run` again — optional: scans on-chain USDC / pUSD deposits into flagged wallets and their entry-cohort peers (Polygon public RPC, no key; ≈10 min; `--rescan` to redo) so scoring can see shared funders
 7. Put your Anthropic API key in the environment (`export GRIB_ANTHROPIC_API_KEY=sk-ant-...`, or a `.env` file — see `.env.example`; plain `ANTHROPIC_API_KEY` also works locally, but Claude Code cloud sessions strip it)
-8. `uv run python -m ingest.news` — optional: searches GDELT for news about each alerted market (needs the key; ≈1 min per 10 markets)
+8. `uv run python -m ingest.news` — optional: searches GDELT (Google News as fallback) for news about each alerted market (needs the key; ≈1 min per 10 markets)
 9. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
 10. `uv run python -m eval.backtest --markets 200 --seed 1` (and `uv run python -m eval.known_cases`) — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
 11. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
@@ -163,7 +163,11 @@ headlines that report or clearly signal the winning outcome. The bundle then say
 relevant news was published *before the account's first buy* — the strongest innocent
 explanation — and the starting risk rating drops one level if it was. GDELT misses wires,
 social media and official releases and records when it *saw* an article, so "no relevant
-article" is weak evidence; case files say so.
+article" is weak evidence; case files say so. When GDELT is unreachable, or the window is older
+than its ~3 months, the search falls back to **Google News** (RSS). Its dates are often day-precise
+and can be a day early (the 2025 Nobel announcement appears in an article dated the day before), so
+a day-precise item is timed at the end of the *following* day: it is listed, marked date-only, and
+never counts as preceding a buy.
 
 `scoring.run` also rolls alerts up **by event** (related markets on the same story, e.g.
 several "…by date?" variants) and **by wallet** (accounts flagged in several markets),
@@ -385,6 +389,8 @@ and says when there are too few to conclude. Run it on its own with `uv run pyth
 
 - Polygon **public RPC** (`polygon-bor-rpc.publicnode.com`, or `POLYGON_RPC_URL`): USDC / pUSD transfers into wallets (funding).
 - **GDELT DOC 2.0** (`api.gdeltproject.org`, public): news articles around alerted markets (covers roughly the last three months).
+- **Google News RSS** (`news.google.com/rss/search`, public): fallback news search, older windows too; dates often day-precise.
+- **Kalshi trade API** (`api.elections.kalshi.com`, public): settled markets and their trades, without accounts.
 - **Anthropic API**: case files, and news queries / headline relevance.
 
 All responses are cached under `data/cache/` and requests are rate-limited (≤4 req/s per host;

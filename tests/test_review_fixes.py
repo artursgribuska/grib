@@ -60,15 +60,6 @@ def test_position_ids_keep_the_full_market_id():
     assert all(p.split(":")[0] in ("slow", "fast") for p in pids)
 
 
-def test_news_skips_markets_older_than_the_gdelt_window(monkeypatch):
-    from types import SimpleNamespace
-    from ingest import news
-    m = SimpleNamespace(market_id="x", question="q", winner="Yes", category="personnel",
-                        first_flagged_buy=pd.Timestamp(datetime(2025, 1, 1)), certainty_at=pd.Timestamp(datetime(2025, 1, 2)))
-    row, arts = news.process_market(client=None, http=None, m=m)     # neither is touched
-    assert row["status"] == "outside news archive window" and arts == []
-
-
 def test_news_without_api_key_is_skipped_not_fatal(monkeypatch):
     from ingest import news
     from cases.writer import MissingApiKey

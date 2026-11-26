@@ -109,6 +109,9 @@ def test_unreachable_gdelt_is_not_reported_as_no_news(con):
     class DownHttp:
         def get_json(self, url, params):
             raise ApiError("connection reset")
+
+        def get_text(self, url, params):
+            raise ApiError("connection reset")
     news.run(con, FakeClaude(), DownHttp())
     assert con.execute("SELECT status FROM news_queries WHERE market_id='slow'").fetchone()[0] == "news source unreachable"
     pid = con.execute("SELECT position_id FROM position_scores WHERE account_id='insider'").fetchone()[0]
@@ -118,3 +121,56 @@ def test_unreachable_gdelt_is_not_reported_as_no_news(con):
     # retried next run
     res = news.run(con, FakeClaude(), FakeHttp([art(8, "X resigns")]))
     assert res["processed"] >= 1
+
+
+def _rss(items):
+    body = "".join(f"<item><title>{t}</title><link>https://g.example/{i}</link><pubDate>{d}</pubDate>"
+                   f"<source url='https://src.example'>Src</source></item>" for i, (t, d) in enumerate(items))
+    return f"<?xml version='1.0'?><rss><channel>{body}</channel></rss>"
+
+
+class GoogleOnlyHttp:
+    """GDELT down; Google News answers with one minute-precise and one day-precise item."""
+    def __init__(self, items):
+        self.items, self.gdelt_calls, self.google_calls = items, 0, 0
+
+    def get_json(self, url, params):
+        self.gdelt_calls += 1
+        from ingest.http import ApiError
+        raise ApiError("HTTP 429")
+
+    def get_text(self, url, params):
+        self.google_calls += 1
+        assert "after:" in params["q"] and "before:" in params["q"]
+        return _rss(self.items)
+
+
+def test_google_news_fallback_and_day_precision(con):
+    from email.utils import format_datetime
+    from datetime import timezone
+    precise = (T - timedelta(hours=30)).replace(minute=17, tzinfo=timezone.utc)
+    day_only = (T - timedelta(hours=3)).replace(hour=7, minute=0, second=0, tzinfo=timezone.utc)
+    http = GoogleOnlyHttp([("X resigns, sources say", format_datetime(precise)),
+                           ("X resigns: official", format_datetime(day_only))])
+    news.run(con, FakeClaude(), http)
+    assert http.gdelt_calls >= 1 and http.google_calls >= 1
+    q = con.execute("SELECT status, source, n_relevant FROM news_queries WHERE market_id='slow'").fetchone()
+    assert q == ("ok", "google_news", 2)
+    a = con.execute("SELECT seen_at, time_precision FROM news_articles WHERE market_id='slow' ORDER BY seen_at").fetchall()
+    assert a[0][1] == "minute" and a[1][1] == "day"
+    assert (a[1][0].date() - day_only.date()).days == 1 and (a[1][0].hour, a[1][0].minute) == (23, 59)
+    assert a[1][0] > T                                          # so it can never read as preceding the buys
+    out = news.news_for_position(con, "slow", T - timedelta(hours=2))
+    assert out["news_source"] == "google_news"
+    assert any("date only" in x.get("time_precision", "") for x in out["earliest_relevant_overall"])
+
+
+def test_windows_older_than_gdelt_go_straight_to_google_news():
+    from datetime import datetime
+    import pandas as pd
+    m = SimpleNamespace(market_id="x", question="q", winner="Yes", category="personnel",
+                        first_flagged_buy=pd.Timestamp(datetime(2025, 1, 1)), certainty_at=pd.Timestamp(datetime(2025, 1, 2)))
+    http = GoogleOnlyHttp([])
+    row, arts = news.process_market(FakeClaude(), http, m)
+    assert http.gdelt_calls == 0 and http.google_calls == 1
+    assert row["status"] == "ok" and row["source"] == "google_news" and arts == []

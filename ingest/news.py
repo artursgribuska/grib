@@ -28,7 +28,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 
 import duckdb
 import pandas as pd
@@ -39,6 +41,7 @@ from ingest.http import ApiError, CachedClient
 log = logging.getLogger("news")
 
 GDELT = "https://api.gdeltproject.org/api/v2/doc/doc"
+GOOGLE_NEWS = "https://news.google.com/rss/search"
 MODEL = "claude-opus-5-5"
 EFFORT = "low"
 LOOKBACK_H = 72
@@ -136,6 +139,38 @@ def gdelt(http: CachedClient, query: str, start: datetime, end: datetime) -> lis
     return out
 
 
+def google_news(http: CachedClient, query: str, start: datetime, end: datetime) -> list[dict] | None:
+    """Fallback source: Google News RSS, searchable beyond GDELT's ~3-month window. Its dates are
+    often only day-precise (rounded to a fixed hour) and can be a day early: the 2025 Nobel winner's
+    announcement (10 Oct) appears in an article dated 9 Oct. A day-precise item is therefore timed at
+    the end of the FOLLOWING day, so it can never wrongly appear to precede a buy (which would lower
+    the risk rating). It is still listed, marked as date-only. None if unreachable."""
+    q = f"{query} after:{(start - timedelta(days=1)):%Y-%m-%d} before:{(end + timedelta(days=1)):%Y-%m-%d}"
+    try:
+        xml = http.get_text(GOOGLE_NEWS, {"q": q, "hl": "en-US", "gl": "US", "ceid": "US:en"})
+        root = ET.fromstring(xml)
+    except (ApiError, ET.ParseError) as e:
+        log.warning("Google News failed for %r: %s", query, str(e)[:120])
+        return None
+    out = []
+    for it in root.iter("item"):
+        try:
+            ts = parsedate_to_datetime(it.findtext("pubDate") or "").astimezone(timezone.utc).replace(tzinfo=None)
+        except (TypeError, ValueError):
+            continue
+        coarse = ts.minute == 0 and ts.second == 0 and ts.hour in (0, 5, 7, 8)
+        if not (start - timedelta(days=1) <= ts <= end + timedelta(days=1)):     # window test on the nominal date
+            continue
+        if coarse:   # the date itself can be a day early (it looks like a US-Pacific date), so: end of the next day
+            ts = (ts + timedelta(days=1)).replace(hour=23, minute=59, second=0)
+        src = it.find("source")
+        out.append({"url": it.findtext("link") or "", "title": (it.findtext("title") or "").strip(),
+                    "domain": (src.text if src is not None else "") or "", "language": "",
+                    "seen_at": ts, "time_precision": "day" if coarse else "minute"})
+    out.sort(key=lambda a: a["seen_at"])
+    return out[:MAX_ARTICLES]
+
+
 DDL = """
 CREATE TABLE IF NOT EXISTS news_queries (
     market_id VARCHAR PRIMARY KEY, query VARCHAR, reveal VARCHAR, window_from TIMESTAMP, window_to TIMESTAMP,
@@ -143,6 +178,8 @@ CREATE TABLE IF NOT EXISTS news_queries (
 CREATE TABLE IF NOT EXISTS news_articles (
     market_id VARCHAR, url VARCHAR, title VARCHAR, domain VARCHAR, language VARCHAR, seen_at TIMESTAMP,
     label VARCHAR, why VARCHAR);
+ALTER TABLE news_queries ADD COLUMN IF NOT EXISTS source VARCHAR;
+ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS time_precision VARCHAR;
 """
 
 
@@ -151,10 +188,9 @@ def process_market(client, http, m) -> tuple[dict, list[dict]]:
     end = m.certainty_at.to_pydatetime() + timedelta(hours=AFTER_PUBLIC_H)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     row = {"market_id": m.market_id, "query": None, "reveal": None, "window_from": start, "window_to": end,
-           "n_articles": 0, "n_relevant": 0, "earliest_relevant_at": None, "status": "ok", "fetched_at": now}
-    if start < now - timedelta(days=ARCHIVE_DAYS):   # an empty answer would read as "no news" — it is not
-        row["status"] = "outside news archive window"
-        return row, []
+           "n_articles": 0, "n_relevant": 0, "earliest_relevant_at": None, "status": "ok", "fetched_at": now,
+           "source": None}
+    in_gdelt_window = start >= now - timedelta(days=ARCHIVE_DAYS)
     try:
         q = _ask(client, QUERY_PROMPT, f"Question: {m.question}\nWinning outcome: {m.winner}\nCategory: {m.category}",
                  QUERY_SCHEMA)
@@ -162,10 +198,15 @@ def process_market(client, http, m) -> tuple[dict, list[dict]]:
         row["status"] = f"query error: {str(e)[:80]}"
         return row, []
     row["query"], row["reveal"] = q["query"], q["what_news_would_reveal_it"]
-    arts = gdelt(http, q["query"], start, end)
+    arts = gdelt(http, q["query"], start, end) if in_gdelt_window else None
+    row["source"] = "gdelt"
+    if arts is None:   # GDELT unreachable, or the window is older than it can search: try Google News
+        arts, row["source"] = google_news(http, q["query"], start, end), "google_news"
     if arts is None:   # not searched — must not read as "no news found"; retried next run
         row["status"] = "news source unreachable"
         return row, []
+    for a in arts:
+        a.setdefault("time_precision", "minute")
     row["n_articles"] = len(arts)
     if not arts:
         return row, []
@@ -212,7 +253,8 @@ def run(con, client=None, http: CachedClient | None = None, refresh: bool = Fals
         con.execute("INSERT INTO news_queries SELECT * FROM _q")
         con.unregister("_q")
         if arts:
-            df = pd.DataFrame(arts)[["market_id", "url", "title", "domain", "language", "seen_at", "label", "why"]]
+            df = pd.DataFrame(arts)[["market_id", "url", "title", "domain", "language", "seen_at", "label", "why",
+                                     "time_precision"]]
             con.register("_a", df)
             con.execute("INSERT INTO news_articles SELECT * FROM _a")
             con.unregister("_a")
@@ -226,20 +268,27 @@ def news_for_position(con, market_id: str, first_buy: datetime) -> dict:
     tables = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()}
     if "news_queries" not in tables:
         return {"status": "not searched"}
-    q = con.execute("SELECT query, window_from, window_to, n_articles, n_relevant, status FROM news_queries "
+    cols = {r[0] for r in con.execute("SELECT column_name FROM information_schema.columns "
+                                      "WHERE table_name IN ('news_queries', 'news_articles')").fetchall()}
+    src = "source" if "source" in cols else "NULL"          # databases from before the Google News fallback
+    q = con.execute(f"SELECT query, window_from, window_to, n_articles, n_relevant, status, {src} FROM news_queries "
                     "WHERE market_id = ?", [market_id]).fetchone()
     if not q:
         return {"status": "not searched"}
-    query, w0, w1, n, n_rel, status = q
-    rel = con.execute("""SELECT seen_at, domain, title, label FROM news_articles
+    query, w0, w1, n, n_rel, status, source = q
+    prec = "coalesce(time_precision, 'minute')" if "time_precision" in cols else "'minute'"
+    rel = con.execute(f"""SELECT seen_at, domain, title, label, {prec} FROM news_articles
                          WHERE market_id = ? AND label IS NOT NULL ORDER BY seen_at""", [market_id]).fetchall()
     before = [r for r in rel if r[0] < first_buy]
 
     def item(r):
-        return {"seen_at": r[0].strftime("%Y-%m-%d %H:%M UTC"), "source": r[1], "headline": r[2], "label": r[3],
-                "hours_before_first_buy": round((first_buy - r[0]).total_seconds() / 3600, 1)}
+        d = {"seen_at": r[0].strftime("%Y-%m-%d %H:%M UTC"), "source": r[1], "headline": r[2], "label": r[3],
+             "hours_before_first_buy": round((first_buy - r[0]).total_seconds() / 3600, 1)}
+        if r[4] == "day":
+            d["time_precision"] = "date only (can be a day early); timed at the end of the following day"
+        return d
     return {
-        "status": status, "search_query": query,
+        "status": status, "search_query": query, "news_source": source or "gdelt",
         "window_from": w0.strftime("%Y-%m-%d %H:%M UTC"), "window_to": w1.strftime("%Y-%m-%d %H:%M UTC"),
         "articles_found": n, "relevant_articles": n_rel,
         "relevant_before_first_buy": len(before),
