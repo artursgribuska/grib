@@ -264,6 +264,15 @@ the public reports describe many modest wins across sibling markets (Google), th
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
 
+## Category index
+
+`uv run python -m eval.category_index` re-scores every position **without** its category points and
+compares categories on trading behaviour alone (writes `data/category_index.md`). It checks the
+hand-set category prior against the data and is the seed of a public integrity index. On the
+200-market sample, elections and sports show the highest behaviour-only scores (rank correlation
+with the prior +0.25). That is the expected pattern rather than a contradiction: vote counts and live
+play make late, confident buying normal there, which is exactly what a low prior damps.
+
 ## Live watch: alerts before payout
 
 The engine above reviews markets after they resolve. `watch/live.py` runs on markets that are
