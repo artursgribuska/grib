@@ -1,7 +1,7 @@
 # Five-minute demo
 
 A walkthrough for a meeting. Everything shown is produced by the commands in the README.
-Nothing is staged. Run `uv run python -m pipeline --skip-ingest` beforehand so the outputs
+Nothing is staged. Run `./grib pipeline --skip-ingest` (or `uv run python -m pipeline --skip-ingest`) beforehand so the outputs
 are fresh.
 
 ## 1. The problem (30 s)
@@ -50,6 +50,13 @@ Open the matching case file in `data/known_cases/cases/`. Show:
 The point: this is the analyst's first draft, ready for review, and that is where a
 compliance team's time goes.
 
+## 3b. The story at a glance (30 s)
+
+From the dashboard's *Events with several flagged wallets* table, click an event to open its
+**dossier** (`data/dossiers/`, or `data/known_cases/dossiers/` for the known cases): the winning
+outcome's price path, every flagged first buy as a dot against the estimated public moment (hover
+for details), and how much flagged money came in 6, 24 or 72 hours ahead.
+
 ## 4. The workflow (60 s)
 
 Back on the main dashboard (`data/dashboard/index.html`):
@@ -63,6 +70,13 @@ Back on the main dashboard (`data/dashboard/index.html`):
 
 Run `uv run python -m ingest.csv_loader ...` on `examples/operator/`, which is a
 sportsbook export in odds and stakes. The two planted accounts come out #1 and #2.
+
+## 5b. No accounts at all (30 s)
+
+`./grib screen-cases`: the market screen sees only times, sides, prices and sizes, as a venue
+with an anonymised feed would. It still ranks the reported stories #1, #2, #3, #14 and #19 of 126.
+`./grib kalshi` then `GRIB_DB_PATH=data/kalshi.duckdb ./grib screen --rebuild` runs it on Kalshi's
+public trades.
 
 ## Questions to expect
 
@@ -78,6 +92,10 @@ sportsbook export in odds and stakes. The two planted accounts come out #1 and #
 - **"False positives?"** Accounts that sold before the news break reach the threshold
   0–3% of the time. Hedges and exits are deducted. A human decides every case, and
   reviewer decisions measure precision per signal.
+- **"Has it ever flagged something before the outcome was known?"** Yes, by design: the live
+  watch runs on open markets, and every alert is followed up once its market resolves
+  (`./grib scorecard`). On replayed ordinary markets the flagged side won 5 of 17 against 3.6
+  implied by the prices: the right direction, not yet significant. Say so plainly.
 - **"Sports?"** This is a deliberate blind spot for this method: everyone trades sports
   late. Match-fixing needs other data.
 - **"Kalshi already has Solidus."** Yes. Our customers are the second tier of new venues,
