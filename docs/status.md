@@ -20,7 +20,7 @@ figure below can be reproduced with the command shown next to it.
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 130 passing | `./grib test` |
+| Tests | 131 passing | `./grib test` |
 
 **Clean-machine run (26 November).** A fresh clone, `uv sync`, then the full pipeline on 200 new
 markets: load 8 min, account enrichment 14 min, scoring 7 s, on-chain funding 11 min, news 5 min
@@ -44,7 +44,7 @@ per story, out of 128 events (`uv run python -m eval.known_cases`):
 - US strikes on Iran, February 2026 (out of sample): #1
 - Maduro (January 2026): #2
 - Iran ceasefire, April 2026 (out of sample): #4
-- Nobel Peace Prize 2025: #5
+- Nobel Peace Prize 2025: #5 (tied with one ordinary market at the same score)
 - Google Year in Search 2025: #7
 
 *Out of sample* means the case was added after every engine change. In a raw position

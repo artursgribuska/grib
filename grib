@@ -19,6 +19,7 @@ operator|ingest.csv_loader|Load an operator bet export (CSV)
 kalshi|ingest.kalshi|Load settled Kalshi markets (trades without accounts)
 backtest|eval.backtest|Planted-trade backtest
 known-cases|eval.known_cases|Validation on publicly reported cases
+timemachine|app.timemachine|Before the news: interactive replay of the reported cases
 replay|watch.live|Replay the live watch on history (--replay)
 categories|eval.category_index|Category index: categories compared on behaviour alone
 screen|scoring.market_screen|Market screen: rank markets without account ids

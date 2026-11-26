@@ -82,7 +82,8 @@ def _is_low_history(facts: pd.DataFrame, acct: str, at: datetime, markets_seen: 
         if f.src == "venue_join_date" and pd.notna(f.first_seen_at):
             age = (at - f.first_seen_at.to_pydatetime()).total_seconds() / 86400
             if age <= FRESH_MAX_DAYS:
-                return True, f"account {max(age, 0):.0f} days old"
+                d = round(max(age, 0))
+                return True, ("account under a day old" if age < 1 else f"account {d} day{'s' if d != 1 else ''} old")
         if pd.notna(f.lifetime):
             if f.lifetime <= LOW_HISTORY_MAX_MARKETS:
                 return True, f"{int(f.lifetime)} markets traded in its lifetime"

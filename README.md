@@ -8,7 +8,7 @@ through the same engine, and (market-level, without accounts) on Kalshi's public
 
 **Does it work?** Run blind on markets behind five publicly reported suspected-leak episodes,
 two of them added only after the engine was frozen, the unchanged engine ranks those stories
-**#1, #2, #4, #5 and #7 of 128 events**. Its top alert in the Maduro market matches the trading in
+**#1, #2, #4, #5 (tied) and #7 of 128 events**. Its top alert in the Maduro market matches the trading in
 the CFTC's first event-contract insider complaint (436,760 Yes shares). Replayed with only the data
 available at each moment, the live watch flags the cases 10 to 248 hours before the news. On
 planted trades, 82–84% of informed buys land in the top 1%. For venues that publish no accounts
@@ -274,6 +274,16 @@ the public reports describe many modest wins across sibling markets (Google), th
 weaker: no single position stands out, and the largest cheap buyer of d4vd
 in our data is a very large, diversified trader whose positions look like market-making.
 
+## Before the news: the cases, replayed
+
+`uv run python -m app.timemachine` (≈3 min) writes `data/known_cases/timemachine.html`, one
+self-contained page. Pick a reported case and press play: the winner's price, who was buying it
+(flagged accounts against everyone else), each flagged account's first buy, and the moment the live
+watch would have raised its alert, using only the trades available then, with a countdown to the
+news. At the public moment the page shows what the engine concluded afterwards. Hover for details;
+space plays and pauses; the arrow keys step. It reads `data/known_cases.duckdb`, so run
+`eval.known_cases` first.
+
 ## Market screen: venues without account ids
 
 Some venues publish trades without accounts (Kalshi's public feed), and some operators can share
@@ -284,7 +294,7 @@ the same 10% category prior as the position engine.
 
 On the known-cases universe, with **no account ids at all**, the reported stories rank **#1, #2, #3,
 #14 and #19 of 126** (Google, Nobel, strikes, Maduro, ceasefire; `uv run python -m eval.screen_cases`).
-The full engine, which sees accounts, ranks them 1, 2, 4, 5 and 7: accounts matter most for slow,
+The full engine, which sees accounts, ranks them 1, 2, 4, 5 (tied) and 7: accounts matter most for slow,
 drip-fed positions such as Maduro's. Disclosures: the feature weights were set before the evaluation.
 Two rules came after looking at results. The category prior was added because without it sports and
 tweet-count markets crowd the top (ranks then 1, 7, 12, 22, 23). A story's public moment became the

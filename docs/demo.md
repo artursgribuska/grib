@@ -26,6 +26,12 @@ Open `data/known_cases/dashboard/index.html` and look at the Nobel Peace Prize 2
   Medium up to High and named its facts: 5 other flagged wallets on the event, and 8
   low-history buyers of the same long shot within 24 h.
 
+## 2a. Show, don't tell (60 s)
+
+Open `data/known_cases/timemachine.html`, pick Maduro and press play. The 5-day-old account starts
+buying at 7¢ three days out; the live-watch alert fires 16.6 hours before the news; at the public
+moment the engine's conclusion appears, with the CFTC complaint match.
+
 ## 2b. It would have warned them in time (60 s)
 
 Run `uv run python -m watch.live --replay`. It replays history using only the data
@@ -81,7 +87,7 @@ public trades.
 ## Questions to expect
 
 - **"How do you know it works?"**
-  - Five publicly reported cases, ranked as stories #1, #2, #4, #5 and #7 of 128 events.
+  - Five publicly reported cases, ranked as stories #1, #2, #4, #5 (tied) and #7 of 128 events.
     Two of them (the US strikes on Iran and the Iran ceasefire, both 2026) were added after
     the engine was frozen.
   - The engine's top Maduro alert matches the trading in the CFTC's first event-contract insider complaint

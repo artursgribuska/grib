@@ -156,7 +156,7 @@ def report() -> str:
         ev = con.execute("""
             WITH e AS (SELECT pe.event_key, max(ps.score) AS best FROM position_scores ps
                        JOIN position_events pe USING (position_id) GROUP BY 1),
-                 r AS (SELECT event_key, row_number() OVER (ORDER BY best DESC) AS rank FROM e)
+                 r AS (SELECT event_key, rank() OVER (ORDER BY best DESC) AS rank FROM e)   -- ties share a rank
             SELECT k."case", min(r.rank) AS rank, (SELECT count(*) FROM e) AS n
             FROM known_case_markets k JOIN position_scores ps USING (market_id)
             JOIN position_events pe USING (position_id) JOIN r USING (event_key)
