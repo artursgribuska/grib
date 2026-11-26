@@ -3,15 +3,17 @@
 An AI compliance analyst for betting operators and prediction-market venues. It watches
 trading activity, flags **anomalous activity warranting review** (e.g. large, early,
 confident bets on the eventual winner), scores it with explainable signals and writes
-a case file. This demo runs on **public Polymarket data**, and on an operator's own bet
-export through the same engine.
+a case file. This demo runs on **public Polymarket data**, on an operator's own bet export
+through the same engine, and (market-level, without accounts) on Kalshi's public trades.
 
 **Does it work?** Run blind on markets behind five publicly reported suspected-leak episodes,
 two of them added only after the engine was frozen, the unchanged engine ranks those stories
 **#1, #2, #4, #5 and #7 of 128 events**. Its top alert in the Maduro market matches the trading in
 the CFTC's first event-contract insider complaint (436,760 Yes shares). Replayed with only the data
 available at each moment, the live watch flags the cases 10 to 248 hours before the news. On
-planted trades, 82–84% of informed buys land in the top 1%. See *Validation* below,
+planted trades, 82–84% of informed buys land in the top 1%. For venues that publish no accounts
+(Kalshi's public feed), a market screen working from trades alone ranks the same stories #1, #2, #3,
+#14 and #19 of 126. See *Validation* below,
 `docs/demo.md` for a five-minute walkthrough and `docs/investor-brief.md` for the business case.
 
 > **Disclaimer:** demo built on public data. Alerts are statistical signals, not legal
