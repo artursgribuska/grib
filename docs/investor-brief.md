@@ -72,6 +72,8 @@ It works at two points in time:
 
 ## Proof
 
+Every test, including the ones that did not go our way, is in `docs/evidence.md`.
+
 | Evidence | Result |
 |---|---|
 | **Match with the CFTC's first insider case on event contracts** (SDNY 26-cv-3369) | The complaint alleges "more than 436,000 Yes shares" of "Maduro out by January 31, 2026?" bought in Dec 2025–Jan 2026. The engine's top alert in that market, found blind, is 436,760 Yes shares, bought 31 Dec–3 Jan for $32,538. Identity is not confirmed; the trading matches |

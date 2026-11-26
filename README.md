@@ -14,7 +14,9 @@ available at each moment, the live watch flags the cases 10 to 248 hours before 
 planted trades, 82–84% of informed buys land in the top 1%. For venues that publish no accounts
 (Kalshi's public feed), a market screen working from trades alone ranks the same stories #1, #2, #3,
 #14 and #19 of 126. See *Validation* below,
-`docs/demo.md` for a five-minute walkthrough and `docs/investor-brief.md` for the business case.
+`docs/demo.md` for a five-minute walkthrough, `docs/investor-brief.md` for the business case and
+`docs/evidence.md` for every test in one place, including a pre-registered replication that did not
+go our way.
 
 > **Disclaimer:** demo built on public data. Alerts are statistical signals, not legal
 > findings, and do not identify or accuse any person. Wallets are pseudonymous.
