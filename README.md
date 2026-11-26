@@ -328,6 +328,14 @@ P-values are exact (Poisson-binomial). Caveats: small counts, one sample period,
 evidence about any individual account. The account-free watch
 below shows no such edge, which is the case for using account data where a venue has it.
 
+**What kind of information?** Not necessarily non-public. Triaging the 33 historical alerts blind
+(`eval/triage_eval.py`) showed where the edge sits: established, active accounts that started sharp
+price moves won 9 of 12 times against 4.9 implied. That is consistent with skill as much as with
+non-public information, and trading data alone cannot tell them apart. The pattern closest to the
+reported cases, a fresh account building a long-shot position, is rarer: the 3 alerts the AI marked
+"escalate" won 2 times against 0.4 implied. The watch finds sharp money; deciding whether it was
+informed is the reviewer's job, which is why the case file and the human decision exist.
+
 ## Account-free live watch (Kalshi)
 
 `watch/flow.py` raises a `flow_surge` alert from anonymous trades: a long shot (≤ 0.35) rises at least
@@ -410,10 +418,18 @@ market is the case to escalate before payout. `uv run python -m app.live_pages` 
 (`watch/triage.py`): what happened, the strongest ordinary explanation, and a suggested action
 (close, monitor or escalate) with the reason. It writes from a fact sheet of our own data only. Every
 number must appear in that sheet and the language must be neutral (the case-file checks), with one
-retry. Notes are cached by the facts, so unchanged alerts cost nothing: about 1¢ per note. On the
-first six live alerts, all on accounts with hundreds of markets behind them, every note suggested
-"close" and passed the checks. The note is shown on the alert page and is a suggestion for a human
-reviewer, never a decision. `uv run python -m watch.triage` drafts notes on demand.
+retry. Notes are cached by the facts and the prompt, so unchanged alerts cost nothing: about 1¢ per
+note. The note is shown on the alert page, in the alert list, on the dashboard and in the digest
+(escalations first). It is a suggestion for a human reviewer, never a decision.
+
+How the guidance was checked (`eval/triage_eval.py`): the 33 historical alerts of the 600-market
+sample were triaged blind, each with only the trades up to its moment. The first version treated a
+long record as reason to close, and the alerts it closed won 10 of 13 times against 5.0 implied, the
+opposite of what closing should mean. The guidance now says a long record alone does not clear an
+alert. On the same 33 alerts (so describing the new behaviour, not an independent test) it escalates
+5, which won 4 times against 1.6 implied, monitors 27 and closes 1. All 66 notes passed the checks.
+A fresh sample is needed to validate the revised guidance. `uv run python -m watch.triage` drafts
+notes on demand.
 
 **Scorecard: checking live alerts prospectively.** Every live alert is a prediction made before
 the outcome was known. After each scan, `watch/follow_up.py` looks up the markets of earlier alerts

@@ -56,10 +56,15 @@ before the market resolves. You receive a fact sheet. Write a short triage note:
 - what_happened: two or three sentences on the activity behind the alert.
 - innocent_explanation: the strongest ordinary reason for this activity (e.g. an active trader's
   usual style, public news, a reaction to a price move), and how well the facts fit it.
-- suggested_action: "close" (the facts fit ordinary trading well), "monitor" (unclear; look again
-  before resolution) or "escalate" (a review now, for example before payout, is warranted).
-  Escalate mainly when a fresh or low-history account holds a position that is large for the market
-  at long-shot prices. An account with a long, varied record usually points to an active trader.
+- suggested_action: "close" (a specific ordinary explanation fits the facts well: for example the
+  position is small for this account and it followed a move others started, or it has since sold
+  out), "monitor" (unclear; look again before resolution) or "escalate" (a review now, for example
+  before payout, is warranted). Escalate mainly when a fresh or low-history account holds a position
+  that is large for the market at long-shot prices.
+  A long, varied record is NOT by itself a reason to close: in historical replays, established
+  accounts that started sharp price moves were right far more often than the odds implied, and
+  trading data alone cannot tell skill from non-public information. When an established account led
+  a move with meaningful size, prefer "monitor".
 - action_reason: one or two sentences.
 
 Rules: use only facts in the sheet; every number you write must appear in the sheet (or write it in
@@ -155,7 +160,8 @@ def draft(client, facts: dict, max_attempts: int = 2) -> tuple[dict, list[str], 
 
 
 def fingerprint(facts: dict) -> str:
-    stable = {k: v for k, v in facts.items() if k != "market"} | {"q": facts["market"]["question"]}
+    stable = {k: v for k, v in facts.items() if k != "market"} | {"q": facts["market"]["question"],
+                                                                   "prompt": SYSTEM, "model": MODEL}   # new guidance redrafts
     return hashlib.sha256(json.dumps(stable, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 

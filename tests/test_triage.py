@@ -46,3 +46,11 @@ def test_failed_checks_are_kept_flagged():
     triage.run(con, FakeClaude([BAD]))
     n = triage.get_note(con, "long_shot_entry", "m1", "Yes", ACCT)
     assert not n["passed"] and "98765" in n["problems"]
+
+
+def test_prompt_change_redrafts(monkeypatch):
+    con = _live_db()
+    fake = FakeClaude([GOOD])
+    triage.run(con, fake)
+    monkeypatch.setattr(triage, "SYSTEM", triage.SYSTEM + " (revised)")
+    assert triage.run(con, fake)["drafted"] == 1
