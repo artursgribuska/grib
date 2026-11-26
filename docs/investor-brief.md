@@ -85,7 +85,7 @@ case. The study found four real flaws in it, and a later case showed that one ev
 planted-trade backtest. This is how we intend to keep improving: on real cases, with the
 regressions measured.
 
-**Honest limits.** Three public cases is still anecdote-sized evidence. Sports markets and
+**Honest limits.** Five public cases (two out of sample) is still anecdote-sized evidence. On ordinary markets the replayed live alerts won 5 of 17 times against 3.6 implied by their prices: in the right direction, not yet statistically significant. The live scorecard now collects this evidence prospectively, one resolved market at a time. Sports markets and
 5-minute crypto markets are a blind spot by design, because everyone trades late there.
 Funding history for older wallets needs a paid archive node. The engine gives scores and
 drafts, not findings: a human decides every case.
