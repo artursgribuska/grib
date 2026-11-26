@@ -242,24 +242,38 @@ def live_watch_html(limit: int = 25) -> str:
         return ""
     try:
         con = duckdb.connect(str(db), read_only=True)
-        rows = con.execute("""SELECT kind, question, outcome, account_id, first_alerted_at, activity_at, usd, avg_price,
-                                     detail FROM watch_alerts
-                              ORDER BY first_alerted_at DESC, activity_at DESC LIMIT ?""", [limit]).fetchall()
+        has_out = bool(con.execute("SELECT count(*) FROM information_schema.tables "
+                                   "WHERE table_name = 'watch_outcomes'").fetchone()[0])
+        res = ("CASE WHEN o.closed AND o.winning_outcome IS NULL THEN 'no clean result' "
+               "WHEN o.winning_outcome IS NULL THEN 'open' WHEN o.winning_outcome = a.outcome THEN 'won' "
+               "ELSE 'lost' END" if has_out else "'open'")
+        join = "LEFT JOIN watch_outcomes o USING (market_id)" if has_out else ""
+        rows = con.execute(f"""SELECT kind, question, a.outcome, account_id, first_alerted_at, activity_at, usd, avg_price,
+                                      detail, {res} FROM watch_alerts a {join}
+                               ORDER BY first_alerted_at DESC, activity_at DESC LIMIT ?""", [limit]).fetchall()
         n = con.execute("SELECT count(*), count(DISTINCT market_id) FROM watch_alerts").fetchone()
+        score = None
+        if has_out:
+            from watch.follow_up import excess_wins, scorecard
+            score = excess_wins(scorecard(con))
         con.close()
     except duckdb.Error:          # missing table, or the live run holds the file right now
         return ""
     body = "".join(
         f"<tr><td>{e(k.replace('_', ' '))}</td><td>{e(q)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
         f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(act)[:16])}<small>raised {e(str(t)[:16])}</small></td>"
-        f"<td>{e(d)}</td></tr>"
-        for k, q, o, a, t, act, u, p, d in rows) or "<tr><td colspan=6 class=muted>No alerts yet</td></tr>"
+        f"<td>{e(d)}</td><td>{e(r)}</td></tr>"
+        for k, q, o, a, t, act, u, p, d, r in rows) or "<tr><td colspan=7 class=muted>No alerts yet</td></tr>"
+    track = ""
+    if score and score["resolved"]:
+        track = (f" Of the {score['resolved']} alerts whose markets have resolved, the flagged side won "
+                 f"{score['wins']}; the prices paid implied {score['expected_wins']:.1f}.")
     return f"""
   <section><h2>Live watch — open markets</h2>
     <p class="muted">Alerts on markets that have not resolved yet, raised before anyone knows the winner
-      ({n[0]} alerts across {n[1]} markets so far). Leads for review, not findings.</p>
+      ({n[0]} alerts across {n[1]} markets so far).{track} Leads for review, not findings.</p>
     <div class="scroll"><table><thead><tr><th>Alert</th><th>Market</th><th>Position</th><th>Avg price</th>
-      <th>Last activity (UTC)</th><th>Why</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
+      <th>Last activity (UTC)</th><th>Why</th><th>Result</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
 
 
 def known_cases_html() -> str:

@@ -310,6 +310,14 @@ retried at the next interval), or schedule single runs.
 live-watch alerts, and pipeline runs with new alerts, are posted to the channel (truncated wallets,
 as in the digests). Unset, nothing is sent.
 
+**Scorecard: checking live alerts prospectively.** Every live alert is a prediction made before
+the outcome was known. After each scan, `watch/follow_up.py` looks up the markets of earlier alerts
+and, once they resolve, records whether the flagged side won (`data/live/scorecard.md`, and a
+*Result* column on the dashboard). One win says nothing about an account; across many alerts the
+question is whether flagged positions win more often than the prices paid implied (a 0.10 buy is
+priced to win 10% of the time). The scorecard reports wins against implied wins with a z-score,
+and says when there are too few to conclude. Run it on its own with `uv run python -m watch.follow_up`.
+
 ## How it is organised
 
 | Folder    | What it does |

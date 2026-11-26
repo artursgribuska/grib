@@ -12,7 +12,8 @@ into data/live.duckdb, enrich accounts that could trigger an alert (join date, l
 markets), scan, and record alerts. An alert is recorded once, with the time it was first
 raised; the digest lists the ones that are new in this run.
 
-Output: data/live/watch.md (new alerts), table watch_alerts in data/live.duckdb.
+Output: data/live/watch.md (new alerts), data/live/scorecard.md (how earlier alerts turned out,
+see watch/follow_up.py), tables watch_alerts and watch_outcomes in data/live.duckdb.
 Alerts are leads for review, not findings; accounts are shown truncated.
 """
 
@@ -132,12 +133,20 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
             con.execute("INSERT INTO watch_alerts VALUES (?,?,?,?,?,?,?,?,?,?)",
                         [a.kind, a.market_id, a.question, a.outcome, a.account_id, now, a.at, a.usd, a.avg_price, a.detail])
             new.append(a)
+    from watch import follow_up
+    try:                                   # outcomes of earlier alerts; a lookup failure must not lose the scan
+        n_resolved = follow_up.check(con, http, now)
+        (OUT / "scorecard.md").write_text(follow_up.report(con))
+    except Exception:
+        log.exception("follow-up of earlier alerts failed; will retry next scan")
+        n_resolved = 0
     con.close()
     text = write_digest(new, len(pairs), n_trades, now)
     if new:
         from app.notify import notify
         notify(text)
-    return {"markets": len(pairs), "trades": n_trades, "enriched": len(wallets), "alerts": len(alerts), "new": len(new)}
+    return {"markets": len(pairs), "trades": n_trades, "enriched": len(wallets), "alerts": len(alerts), "new": len(new),
+            "newly_resolved": n_resolved}
 
 
 def write_digest(new, n_markets: int, n_trades: int, now: datetime) -> None:
