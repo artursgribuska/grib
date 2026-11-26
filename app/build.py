@@ -239,6 +239,16 @@ def rollups(d: dict) -> str:
     <tbody>{wl_rows}</tbody></table></div></section>"""
 
 
+def _alert_link(kind, market_id, question, outcome, account_id) -> str:
+    """Link to the alert's page (app/live_pages.py) when it has been built."""
+    from types import SimpleNamespace
+    from app.live_pages import OUT, page_name
+    name = page_name(SimpleNamespace(kind=kind, market_id=market_id, question=question, outcome=outcome, account_id=account_id))
+    if (OUT / name).exists():
+        return f'<a href="../live/alerts/{e(name)}">{e(question)}</a>'
+    return e(question)
+
+
 def live_watch_html(limit: int = 25) -> str:
     """Open-market alerts from the live watch (watch/run_live.py), newest first, if it has run."""
     db = config.DATA_DIR / "live.duckdb"
@@ -253,7 +263,7 @@ def live_watch_html(limit: int = 25) -> str:
                "ELSE 'lost' END" if has_out else "'open'")
         join = "LEFT JOIN watch_outcomes o USING (market_id)" if has_out else ""
         rows = con.execute(f"""SELECT kind, question, a.outcome, account_id, first_alerted_at, activity_at, usd, avg_price,
-                                      detail, {res} FROM watch_alerts a {join}
+                                      detail, {res}, a.market_id FROM watch_alerts a {join}
                                ORDER BY first_alerted_at DESC, activity_at DESC LIMIT ?""", [limit]).fetchall()
         n = con.execute("SELECT count(*), count(DISTINCT market_id) FROM watch_alerts").fetchone()
         score = None
@@ -264,10 +274,10 @@ def live_watch_html(limit: int = 25) -> str:
     except duckdb.Error:          # missing table, or the live run holds the file right now
         return ""
     body = "".join(
-        f"<tr><td>{e(k.replace('_', ' '))}</td><td>{e(q)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
+        f"<tr><td>{e(k.replace('_', ' '))}</td><td>{_alert_link(k, mid, q, o, a)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
         f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(act)[:16])}<small>raised {e(str(t)[:16])}</small></td>"
         f"<td>{e(d)}</td><td>{e(r)}</td></tr>"
-        for k, q, o, a, t, act, u, p, d, r in rows) or "<tr><td colspan=7 class=muted>No alerts yet</td></tr>"
+        for k, q, o, a, t, act, u, p, d, r, mid in rows) or "<tr><td colspan=7 class=muted>No alerts yet</td></tr>"
     track = ""
     if score and score["resolved"]:
         track = (f" Of the {score['resolved']} alerts whose markets have resolved, the flagged side won "

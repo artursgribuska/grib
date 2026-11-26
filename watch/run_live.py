@@ -141,6 +141,11 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
     except Exception:
         log.exception("follow-up of earlier alerts failed; will retry next scan")
         n_resolved, track = 0, None
+    try:                                   # one page per alert, with the context a reviewer needs
+        from app import live_pages
+        live_pages.build_all(con)
+    except Exception:
+        log.exception("alert pages failed; the alerts themselves are recorded")
     con.close()
     text = write_digest(new, len(pairs), n_trades, now, track)
     if new:
@@ -158,6 +163,8 @@ def write_digest(new, n_markets: int, n_trades: int, now: datetime, track: dict 
     for a in sorted(new, key=lambda x: -x.usd):
         lines.append(f"- **{a.kind.replace('_', ' ')}** · {a.question} · '{a.outcome}' · {short_account(a.account_id)} · "
                      f"${a.usd:,.0f} at {a.avg_price:.2f} · {a.detail} · last activity {a.at:%Y-%m-%d %H:%M} UTC")
+    if new:
+        lines += ["", "Each alert has a page with the price, the account's buys and its venue record: data/live/alerts/index.html"]
     if track and track["resolved"]:
         lines += ["", f"Track record: of {track['resolved']} earlier alerts whose markets resolved, the flagged side won "
                       f"{track['wins']}; the prices paid implied {track['expected_wins']:.1f} (data/live/scorecard.md)."]

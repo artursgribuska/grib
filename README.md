@@ -364,6 +364,13 @@ retried at the next interval), or schedule single runs.
 live-watch alerts, and pipeline runs with new alerts, are posted to the channel (truncated wallets,
 as in the digests). Unset, nothing is sent.
 
+**Alert pages.** Each live alert gets a page (`data/live/alerts/`, rebuilt after every scan, linked
+from the dashboard and the digest): the outcome's price over the trades held with the account's buys
+on it, the account's share of the market's buying, what the venue says about the account (join date,
+lifetime markets, volume, profit) and other alerts on the same market. A long lifetime record usually
+points to an active trader, which lets a reviewer close the alert quickly; a days-old account with one
+market is the case to escalate before payout. `uv run python -m app.live_pages` rebuilds them.
+
 **Scorecard: checking live alerts prospectively.** Every live alert is a prediction made before
 the outcome was known. After each scan, `watch/follow_up.py` looks up the markets of earlier alerts
 and, once they resolve, records whether the flagged side won (`data/live/scorecard.md`, and a
