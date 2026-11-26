@@ -1,6 +1,6 @@
 # Integrity Analyst: investor brief (draft)
 
-*Draft, 24 November 2026. Market facts are from the sources in `docs/market-notes.md`.
+*Draft, 26 November 2026. Market facts are from the sources in `docs/market-notes.md`.
 Product facts and numbers are reproducible from this repository. Anything marked
 **[decide]** is an open choice for the founders, not a claim.*
 
@@ -60,7 +60,11 @@ It works at two points in time:
    - Per-signal precision computed from reviewer decisions.
    - A run digest for email or chat.
 5. **Works beyond Polymarket.** A loader takes an operator's own bet export (odds and
-   stake) into the same engine.
+   stake) into the same engine. Where accounts are not available at all, a market-level
+   screen ranks markets from anonymous trades (Kalshi loader included).
+6. **Keeps score of itself.** Every live alert is followed up when its market resolves: did
+   the flagged side win more often than the odds paid implied? This builds an
+   out-of-sample track record automatically.
 
 ## Proof
 
@@ -70,10 +74,11 @@ It works at two points in time:
 | **Prospective flag** | The first run on 24 Nov 2026, before we had seen any reporting, put a Jensen Huang/NVIDIA position at #1 of 6,966. The same days, reports described suspicious account clusters winning about $350k on Huang's return |
 | **Live watch, replayed using only data available at each moment** | Maduro: the account matching the CFTC complaint was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. Iran ceasefire and US strikes on Iran (both out of sample): first alerts **6–14 days before** the news, on accounts 0–1 days old. Alerts on the losing side: none for Maduro, Nobel or the strikes, 2 of 12 for the ceasefire. Ordinary markets: 6.1 alerts per 1,000 market-days |
 | Five publicly reported episodes, engine unchanged and given trades only, ranked as stories among 128 events | US strikes on Iran, Feb 2026 (**out of sample**): **#1**. Maduro, Jan 2026: **#2**. Iran ceasefire, Apr 2026 (**out of sample**): **#4**. Nobel Peace Prize 2025: **#5**. Google Year in Search 2025: **#7**. *Out of sample* = added after every engine change |
+| **Without account ids** (for venues whose feeds are anonymous, such as Kalshi's public trades) | A market-level screen that sees only times, sides, prices and sizes ranks the same reported stories **#1, #2, #3, #4 and #15 of 129**. A Kalshi loader feeds it today |
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
 | Unit cost | An AI case file costs about **7.6¢** in model usage (33 written: 11.3k input and 5.3k output tokens on average, Claude Sonnet 5.5 list prices). 1 of 33 needed a second attempt to fix a number |
-| Engineering | 111 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades; it runs on a schedule and posts new alerts to a team channel |
+| Engineering | 122 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades; it runs on a schedule and posts new alerts to a team channel |
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel
 case. The study found four real flaws in it, and a later case showed that one event can flood a raw ranking, so the queue now groups alerts by event. Each was fixed and re-checked against the

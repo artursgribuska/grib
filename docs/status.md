@@ -1,6 +1,6 @@
 # Project status
 
-*As of 25 November 2026.* This is a snapshot. The README is the reference, and each
+*As of 26 November 2026.* This is a snapshot. The README is the reference, and each
 figure below can be reproduced with the command shown next to it.
 
 ## What exists
@@ -13,10 +13,14 @@ figure below can be reproduced with the command shown next to it.
 | Live watch on open markets | Working. First run: 150 markets, 287,939 trades, 6 alerts | `uv run python -m watch.run_live` |
 | Analyst review loop | Working. Dashboard decisions, audit trail, per-signal statistics | `uv run python -m app.review` |
 | Operator data (sportsbook CSV) | Working. Example in `examples/operator/` | `uv run python -m ingest.csv_loader` |
+| Event dossiers | One page per flagged story: price path with flagged buys, lead times, accounts | `./grib dossiers` |
+| Live-watch scorecard | Earlier live alerts followed up once their markets resolve: wins vs the odds paid | `./grib scorecard` |
+| Market screen (no accounts) | Ranks markets from anonymous trades; Kalshi loader included | `./grib screen` |
+| Category index | Categories compared on behaviour alone (checks the category prior) | `./grib categories` |
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 113 passing | `uv run pytest` |
+| Tests | 122 passing | `./grib test` |
 
 ## What it shows
 
@@ -40,6 +44,10 @@ per story, out of 128 events (`uv run python -m eval.known_cases`):
 *Out of sample* means the case was added after every engine change. In a raw position
 ranking (10,908 positions), the February strikes flood the list with 167 alerts, which is
 why the review queue groups alerts by event.
+
+**Without account ids.** The market screen sees only each trade's time, side, price and size. On the
+same universe it ranks the reported stories #1, #2, #3, #4 and #15 of 129 (`./grib screen-cases`). This is what
+a venue with an anonymised feed, such as Kalshi's public trades, could run.
 
 **Live watch, replayed using only the data available at each moment**
 (`uv run python -m watch.live --replay`):
