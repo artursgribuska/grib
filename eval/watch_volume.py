@@ -76,6 +76,7 @@ def summarise(a: pd.DataFrame, n_markets: int) -> dict:
 def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
     m = ordinary_markets(con, exclude)
     a = replay_all(con, m)
+    config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)   # a fresh database has no output folder yet
     if len(a):                                             # kept so the analysis can be redone without a replay
         a.to_csv(config.OUTPUT_DIR / "watch_volume_alerts.csv", index=False)
     scope_m = m[~m.category.isin(SKIP_CATEGORIES)]

@@ -112,6 +112,7 @@ def main(argv=None) -> int:
     r = run(src, alerts)
     src.close()
     text, res = report(r)
+    config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)   # a fresh database has no output folder yet
     (config.OUTPUT_DIR / "triage_eval.md").write_text(text)
     (config.OUTPUT_DIR / "triage_eval.json").write_text(json.dumps(res, indent=2))
     r.to_csv(config.OUTPUT_DIR / "triage_eval_rows.csv", index=False)
