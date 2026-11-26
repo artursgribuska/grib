@@ -32,7 +32,8 @@ It works at two points in time:
 
 - **Live, before payout.** The watch runs on open markets. It flags fresh accounts building
   heavy long-shot positions, and accounts that start sharp price run-ups. A venue can then
-  hold a withdrawal before it is paid out.
+  hold a withdrawal before it is paid out. On venues without account data (Kalshi's public
+  feed) an account-free variant flags one-sided surges into long shots.
 - **After resolution.** A full review of each market, with the scored evidence and the case
   file.
 
@@ -45,8 +46,8 @@ It works at two points in time:
 2. **Evidence.**
    - Account funding on-chain: shared funders and direct transfers, with bridges,
      exchanges and spam filtered out.
-   - News timestamps from GDELT, to test the strongest innocent explanation ("was it
-     already in the news?").
+   - News timestamps from GDELT, with Google News as the fallback, to test the strongest
+     innocent explanation ("was it already in the news?").
 3. **AI case files.**
    - Each one includes a summary, timeline, evidence, at least four innocent explanations,
      a risk rating with confidence, next steps and open questions.
@@ -75,7 +76,7 @@ It works at two points in time:
 |---|---|
 | **Match with the CFTC's first insider case on event contracts** (SDNY 26-cv-3369) | The complaint alleges "more than 436,000 Yes shares" of "Maduro out by January 31, 2026?" bought in Dec 2025–Jan 2026. The engine's top alert in that market, found blind, is 436,760 Yes shares, bought 31 Dec–3 Jan for $32,538. Identity is not confirmed; the trading matches |
 | **Prospective flag** | The first run on 24 Nov 2026, before we had seen any reporting, put a Jensen Huang/NVIDIA position at #1 of 6,966. The same days, reports described suspicious account clusters winning about $350k on Huang's return |
-| **Live watch, replayed using only data available at each moment** | Maduro: the account matching the CFTC complaint was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. Iran ceasefire and US strikes on Iran (both out of sample): first alerts **6–14 days before** the news, on accounts 0–1 days old. Alerts on the losing side: none for Maduro, Nobel or the strikes, 2 of 12 for the ceasefire. Ordinary markets: 6.1 alerts per 1,000 market-days |
+| **Live watch, replayed using only data available at each moment** | Maduro: the account matching the CFTC complaint was flagged **16.6 hours before the news** (5 days old, drip-buying at 7¢). Nobel: the account that started the run-up was flagged **10 hours before the announcement**. Iran ceasefire and US strikes on Iran (both out of sample): first alerts **6–14 days before** the news, on accounts 0–1 days old. Alerts on the losing side: none for Maduro, Nobel or the strikes, 2 of 12 for the ceasefire. Ordinary markets: 4–6 alerts per 1,000 market-days (200- and 600-market samples) |
 | Five publicly reported episodes, engine unchanged and given trades only, ranked as stories among 128 events | US strikes on Iran, Feb 2026 (**out of sample**): **#1**. Maduro, Jan 2026: **#2**. Iran ceasefire, Apr 2026 (**out of sample**): **#4**. Nobel Peace Prize 2025: **#5** (tied). Google Year in Search 2025: **#7**. *Out of sample* = added after every engine change |
 | **Without account ids** (for venues whose feeds are anonymous, such as Kalshi's public trades) | A market-level screen that sees only times, sides, prices and sizes ranks the same reported stories **#1, #2, #3, #14 and #19 of 126**. A Kalshi loader feeds it today |
 | **Live alerts carry information** (out of sample) | Replayed on 402 markets never used in any design decision, the flagged side won **11 of 19** times against **7.6** implied by the prices paid (exact one-sided p = 0.06); counting one alert per market, **11 of 18 vs 7.0 (p = 0.024)**. Across all 535 in-scope markets: 15 of 28 markets vs 9.0 (p = 0.006) |
@@ -83,7 +84,11 @@ It works at two points in time:
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
 | Unit cost | An AI case file costs about **7.6¢** in model usage (33 written: 11.3k input and 5.3k output tokens on average, Claude Sonnet 5.5 list prices). 1 of 33 needed a second attempt to fix a number |
-| Engineering | 148 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades; it runs on a schedule and posts new alerts to a team channel |
+| Engineering | 148 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watches (150 open Polymarket markets with accounts, 100 open Kalshi markets without) run on one schedule in a container and post new alerts to a team channel |
+
+**See it.** `data/known_cases/timemachine.html` (`./grib timemachine`) replays each case from the
+real trades: the money arriving, the live-watch alert firing with the AI's blind first look, and a
+countdown to the news. A fifth tab shows an ordinary market for comparison.
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel
 case. The study found four real flaws in it, and a later case showed that one event can flood a raw ranking, so the queue now groups alerts by event. Each was fixed and re-checked against the
