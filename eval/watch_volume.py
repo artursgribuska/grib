@@ -64,10 +64,11 @@ def summarise(a: pd.DataFrame, n_markets: int) -> dict:
     return {"markets": n_markets, "alerts": int(len(a)),
             "per_1000_market_days": round(1000 * len(a) / (n_markets * DAYS), 2) if n_markets else None,
             "wins": x["wins"], "expected_wins": round(x["expected_wins"], 2),
-            "z": None if x["z"] is None else round(x["z"], 2), "p_one_sided": None if x["z"] is None else round(p_value(x["z"]), 3),
+            "z": None if x["z"] is None else round(x["z"], 2),
+            "p_one_sided": None if x.get("p_exact") is None else round(x["p_exact"], 3),
             "per_market": {"markets_alerted": int(len(f)), "wins": y["wins"], "expected_wins": round(y["expected_wins"], 2),
                            "z": None if y["z"] is None else round(y["z"], 2),
-                           "p_one_sided": None if y["z"] is None else round(p_value(y["z"]), 3)},
+                           "p_one_sided": None if y.get("p_exact") is None else round(y["p_exact"], 3)},
             "by_kind": {k: {"alerts": int(len(g)), "wins": int(g.on_winner.sum()), "implied": round(float(g.avg_price.sum()), 2)}
                         for k, g in a.groupby("kind")} if len(a) else {}}
 
@@ -83,7 +84,7 @@ def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
     lines = ["# Live watch on ordinary markets", "",
              f"Replayed every {STEP_H} h over the {DAYS} days before each outcome became public, using only the "
              "trades available at each moment. Alerts are leads for review, not findings.", "",
-             "| Scope | Markets | Alerts | Per 1,000 market-days | Flagged side won | Implied by prices | z | p (one-sided) |",
+             "| Scope | Markets | Alerts | Per 1,000 market-days | Flagged side won | Implied by prices | z | exact p (one-sided) |",
              "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for name, label in (("watch_scope", "What the watch covers (no sports, no crypto prices)"), ("all_markets", "All markets")):
         r = res[name]
@@ -93,11 +94,12 @@ def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
     pm = res["watch_scope"]["per_market"]
     lines += ["", f"Counting only the first alert on each market (alerts on one market are not independent): "
                   f"{pm['markets_alerted']} markets, the alerted side won {pm['wins']} vs {pm['expected_wins']} implied "
-                  f"(z = {pm['z']}, one-sided p = {pm['p_one_sided']}). Watch scope."]
+                  f"(z = {pm['z']}, exact one-sided p = {pm['p_one_sided']}). Watch scope."]
     lines += ["", "By kind (watch scope):", ""]
     for k, v in res["watch_scope"]["by_kind"].items():
         lines.append(f"- {k.replace('_', ' ')}: {v['alerts']} alerts, the alerted side won {v['wins']}, prices implied {v['implied']}")
-    lines += ["", "*z* compares wins with the wins implied by the prices paid (Poisson-binomial variance). A win is not "
+    lines += ["", "*p* is exact: the chance of at least that many wins if each alerted side won exactly as often as its "
+              "price implied (Poisson-binomial). *z* is the normal approximation, for reference. A win is not "
               "evidence against any account; the question is whether alerts, taken together, carry information.", ""]
     return "\n".join(lines) + "\n", res
 

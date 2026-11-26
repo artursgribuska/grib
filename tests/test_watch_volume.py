@@ -11,7 +11,11 @@ def test_summarise_counts_and_significance():
                       "at": pd.to_datetime(["2026-01-02", "2026-01-01", "2026-01-01", "2026-01-01"])})
     s = summarise(a, 10)
     assert s["alerts"] == 4 and s["wins"] == 2 and abs(s["expected_wins"] - 0.5) < 1e-9
-    assert s["z"] > 0 and 0 < s["p_one_sided"] < 0.5
+    import itertools                              # brute force over all win/loss outcomes
+    probs = [0.1, 0.2, 0.1, 0.1]
+    brute = sum(__import__("math").prod(q if w else 1 - q for q, w in zip(probs, ws))
+                for ws in itertools.product([0, 1], repeat=4) if sum(ws) >= 2)
+    assert s["z"] > 0 and abs(s["p_one_sided"] - round(brute, 3)) < 1e-9
     assert s["by_kind"]["long_shot_entry"] == {"alerts": 3, "wins": 2, "implied": 0.4}
     pm = s["per_market"]                         # market 'a' counts once, by its earliest alert (a loss)
     assert pm["markets_alerted"] == 3 and pm["wins"] == 1 and abs(pm["expected_wins"] - 0.4) < 1e-9

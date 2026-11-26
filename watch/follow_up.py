@@ -92,7 +92,21 @@ def excess_wins(s: pd.DataFrame) -> dict:
     p = r.avg_price.clip(0.001, 0.999)
     expected, var = float(p.sum()), float((p * (1 - p)).sum())
     z = (wins - expected) / math.sqrt(var) if var > 0 else None
-    return {"alerts": len(s), "resolved": n, "wins": wins, "expected_wins": expected, "z": z}
+    return {"alerts": len(s), "resolved": n, "wins": wins, "expected_wins": expected, "z": z,
+            "p_exact": exact_p(list(p), wins) if n else None}
+
+
+def exact_p(probs: list[float], wins: int) -> float:
+    """One-sided exact p-value: P(at least `wins` successes) under independent wins with these
+    probabilities (Poisson-binomial). Preferred over the z approximation for small counts."""
+    dist = [1.0]
+    for q in probs:
+        nxt = [0.0] * (len(dist) + 1)
+        for k, v in enumerate(dist):
+            nxt[k] += v * (1 - q)
+            nxt[k + 1] += v * q
+        dist = nxt
+    return float(min(1.0, sum(dist[wins:])))
 
 
 def report(con) -> str:

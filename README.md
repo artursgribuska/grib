@@ -321,9 +321,11 @@ and what drove the score. A screened market is worth a closer look, not a findin
 **Do live alerts carry information?** `uv run python -m eval.watch_volume` (with `--exclude-db` for
 out-of-sample runs) replays the live watch on every ordinary market of a database and asks whether
 alerted sides win more often than the prices paid implied. On 402 markets never used in any design
-decision, they did: 11 of 19 against 7.6 (one-sided p = 0.035; 16 of 33 against 10.7 across all 535
-in-scope markets). Caveats: a normal approximation on small counts; several alerts on one market are
-not independent; and a win is never evidence about any individual account. The account-free watch
+decision, they did: 11 of 19 against 7.6 (exact one-sided p = 0.06). Counting one alert per market,
+since alerts on one market are not independent: 11 of 18 against 7.0 (p = 0.024). Across all 535
+in-scope markets: 16 of 33 against 10.7 (p = 0.023), or 15 of 28 against 9.0 per market (p = 0.006).
+P-values are exact (Poisson-binomial). Caveats: small counts, one sample period, and a win is never
+evidence about any individual account. The account-free watch
 below shows no such edge, which is the case for using account data where a venue has it.
 
 ## Account-free live watch (Kalshi)
@@ -379,8 +381,8 @@ Replayed over history with only the data available at each moment (`uv run pytho
 | US–Iran ceasefire, April 2026 (**out of sample**) — "by April 7" / "by April 15" | **248 h** / **158 h**: accounts 0 and 1 days old buying at 11–15¢ | 6 / 2 and 4 / 0 |
 | US strikes on Iran, February 2026 (**out of sample**) — "by February 28" | **336 h** (the start of the 14-day replay window): an account 0 days old at 12¢ | 21 / 0; none of the losing "next strike on [date]" markets fired |
 | 200 ordinary markets, last 14 days each | 6.1 alerts per 1,000 market-days | alerted long shots won 20% vs 16% implied; run-up initiators 43% vs 30%; together 5 of 17 vs 3.6 implied (z +0.8: not significant) |
-| **402 further markets, never used in any design decision** (out of sample) | 3.4 per 1,000 market-days (watch scope) | **the flagged side won 11 of 19 vs 7.6 implied by the prices paid: z +1.8, one-sided p = 0.035** |
-| All 535 in-scope markets of the 600-market sample | 4.4 per 1,000 market-days | 16 of 33 vs 10.7 implied: z +2.2, p = 0.013 |
+| **402 further markets, never used in any design decision** (out of sample) | 3.4 per 1,000 market-days (watch scope) | **the flagged side won 11 of 19 vs 7.6 implied by the prices paid (exact one-sided p = 0.06); first alert per market: 11 of 18 vs 7.0 (p = 0.024)** |
+| All 535 in-scope markets of the 600-market sample | 4.4 per 1,000 market-days | 16 of 33 vs 10.7 implied (p = 0.023); first alert per market: 15 of 28 vs 9.0 (p = 0.006) |
 
 The ordinary-market samples are small (11 and 7 alerts): the run-up edge is early evidence of
 signal, the long-shot edge is within noise. An account counts as fresh or low-history from the

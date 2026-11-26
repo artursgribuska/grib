@@ -20,7 +20,7 @@ figure below can be reproduced with the command shown next to it.
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 139 passing | `./grib test` |
+| Tests | 140 passing | `./grib test` |
 
 **Clean-machine run (26 November).** A fresh clone, `uv sync`, then the full pipeline on 200 new
 markets: load 8 min, account enrichment 14 min, scoring 7 s, on-chain funding 11 min, news 5 min
@@ -97,7 +97,8 @@ window. Details are in the README and the commit history.
   Failed searches are marked as failed and retried, never reported as "no news".
 - **The live watch** needs scheduling (every few hours) to protect payouts in practice. Its
   prospective scorecard has 6 alerts and none resolved yet. Replayed out of sample (402 markets) the
-  flagged side won 11 of 19 vs 7.6 implied (p = 0.035): modest, with small counts.
+  flagged side won 11 of 19 vs 7.6 implied (exact p = 0.06; per market 11 of 18 vs 7.0, p = 0.024):
+  modest, with small counts.
 - **Free news sources are best effort.** On 26 November GDELT refused most requests with HTTP 429
   for minutes at a time (the Google News fallback now covers that). A production version should
   add a paid, minute-precise wire source.

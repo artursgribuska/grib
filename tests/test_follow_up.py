@@ -75,3 +75,9 @@ def test_digest_includes_track_record(tmp_path, monkeypatch):
     text = rl.write_digest([], 10, 100, NOW, {"resolved": 4, "wins": 2, "expected_wins": 0.8, "alerts": 6, "z": 1.5})
     assert "Track record" in text and "won 2" in text and "implied 0.8" in text
     assert "Track record" not in rl.write_digest([], 10, 100, NOW, None)
+
+
+def test_exact_p_matches_hand_calculation():
+    from watch.follow_up import exact_p
+    assert abs(exact_p([0.5, 0.5], 2) - 0.25) < 1e-12 and abs(exact_p([0.5, 0.5], 1) - 0.75) < 1e-12
+    assert exact_p([0.1, 0.2], 0) == 1.0

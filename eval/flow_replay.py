@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from datetime import timedelta
 
 import duckdb
@@ -63,7 +62,7 @@ def report(con) -> tuple[str, dict]:
     n_ord = len(set(screened) - set(cases.market_id))
     x = excess_wins(ordinary.assign(won=ordinary.on_winner, avg_price=ordinary.price_at)) if len(ordinary) else \
         {"resolved": 0, "wins": 0, "expected_wins": 0.0, "z": None}
-    p = None if x["z"] is None else 0.5 * math.erfc(x["z"] / math.sqrt(2))
+    p = x.get("p_exact")
     res["ordinary"] = {"markets": int(n_ord), "alerts": int(len(ordinary)),
                        "per_1000_market_days": round(1000 * len(ordinary) / (n_ord * DAYS), 2) if n_ord else None,
                        "wins": x["wins"], "expected_wins": round(x["expected_wins"], 2),
@@ -72,7 +71,7 @@ def report(con) -> tuple[str, dict]:
     lines += ["", "## Ordinary markets", "",
               f"{o['alerts']} alerts over {o['markets']} markets × {DAYS} days = **{o['per_1000_market_days']} per 1,000 "
               f"market-days**. The alerted outcome won **{o['wins']}** times; its price at the moment of the alert "
-              f"implied {o['expected_wins']} (z = {o['z']}, one-sided p = {o['p_one_sided']}).", "",
+              f"implied {o['expected_wins']} (z = {o['z']}, exact one-sided p = {o['p_one_sided']}).", "",
               "Alerts are leads for review, not findings.", ""]
     return "\n".join(lines) + "\n", res
 
