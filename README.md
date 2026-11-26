@@ -19,6 +19,10 @@ planted trades, 82–84% of informed buys land in the top 1%. See *Validation* b
 
 ## Quick start
 
+**One command for everything:** `./grib` lists every step (`./grib demo`, `./grib pipeline`,
+`./grib watch --every 3`, `./grib review queue`, `./grib test`, …); each is a shortcut for the
+`uv run python -m …` command shown below.
+
 **Try it first (≈10–15 minutes):** `uv sync`, set `GRIB_ANTHROPIC_API_KEY` (optional: without it
 you get everything but the AI case files), then `uv run python -m demo`. It loads 40 ordinary
 markets plus the Maduro and Nobel cases into its own `data/demo/`, runs the unchanged engine and

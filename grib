@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# One entry point for every step:  ./grib <command> [options]   (./grib with no command lists them)
+set -euo pipefail
+cd "$(dirname "$0")"
+
+declare -A CMD=(
+  [demo]="demo|Quick demo: Maduro and Nobel cases in a small universe (~15 min first time)"
+  [pipeline]="pipeline|Full incremental run: load, enrich, score, funding, news, case files, dossiers, dashboard"
+  [score]="scoring.run|Score positions and print the top alerts"
+  [funding]="ingest.funding|Scan on-chain funding of flagged accounts"
+  [news]="ingest.news|Search news (GDELT) for each alerted market"
+  [cases]="cases.run|Write AI case files for the top alerts"
+  [dashboard]="app.build|Build the dashboard (data/dashboard/index.html)"
+  [dossiers]="app.dossier|Build event dossiers (data/dossiers/)"
+  [review]="app.review|Analyst review: queue, decide, import, history, stats"
+  [watch]="watch.run_live|Live watch on open markets (--every 3 to keep running)"
+  [scorecard]="watch.follow_up|How earlier live alerts turned out"
+  [operator]="ingest.csv_loader|Load an operator's bet export (CSV)"
+  [backtest]="eval.backtest|Planted-trade backtest"
+  [known-cases]="eval.known_cases|Validation on publicly reported cases"
+  [replay]="watch.live|Replay the live watch on history (--replay)"
+  [categories]="eval.category_index|Category index: categories compared on behaviour alone"
+)
+ORDER="demo pipeline score funding news cases dossiers dashboard review watch scorecard operator backtest known-cases replay categories"
+
+if [[ $# -eq 0 || "$1" == "help" || "$1" == "-h" || "$1" == "--help" ]]; then
+  echo "usage: ./grib <command> [options]     (./grib <command> --help for its options)"
+  echo
+  for c in $ORDER; do printf "  %-12s %s\n" "$c" "${CMD[$c]#*|}"; done
+  echo
+  echo "  test         Run the test suite"
+  exit 0
+fi
+if [[ "$1" == "test" ]]; then shift; exec uv run pytest "$@"; fi
+if [[ -z "${CMD[$1]+x}" ]]; then echo "unknown command: $1 (./grib lists them)" >&2; exit 2; fi
+mod="${CMD[$1]%%|*}"; shift
+exec uv run python -m "$mod" "$@"
