@@ -17,8 +17,13 @@ figure below can be reproduced with the command shown next to it.
 | Live-watch scorecard | Earlier live alerts followed up once their markets resolve: wins vs the odds paid | `./grib scorecard` |
 | Market screen (no accounts) | Ranks markets from anonymous trades; Kalshi loader included | `./grib screen` |
 | Category index | Categories compared on behaviour alone (checks the category prior) | `./grib categories` |
+| Live alert pages + AI first look | One page per live alert (price, account's buys, venue record) and a checked Claude note: close / monitor / escalate, ~1¢ each | `./grib alert-pages` |
+| Account-free live watch (Kalshi) | One-sided long-shot surges from anonymous trades; first run: 100 markets, 59,035 trades, 1 alert | `./grib kalshi-watch` |
+| Both watches on one schedule | Container default; one venue failing does not stop the other | `./grib watch-all --every 3` |
+| Before the news (time machine) | Interactive replay of the reported cases with the blind AI first look, plus an ordinary-market control | `./grib timemachine` |
+| Live-watch evidence | Out of sample: flagged side won 11 of 18 markets vs 7.0 implied (exact p = 0.024); second sample pre-registered | `eval.watch_volume` |
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
-| Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
+| Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`), escalations first | `watch.run_all --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
 | Tests | 148 passing | `./grib test` |
 
