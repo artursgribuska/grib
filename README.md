@@ -287,6 +287,11 @@ trading in slower siblings being counted. That second rule *lowered* the ceasefi
 because its earlier rank had counted trading after the 7 April announcement. A 'No' that became certain
 within 72 hours of its deadline gets no price-drift credit (time ran out in public view).
 
+Does the position engine have the same sibling problem? Checked: on both the 200-market and the
+known-cases databases, **0** alerts at the review threshold have a first buy after their story's
+sibling-level public moment (2 and 5 at score ≥ 40), so the engine keeps per-market timing for now.
+The dashboard shows the screen's top 10 under the event roll-ups.
+
 `uv run python -m ingest.kalshi --markets 200` loads recently settled Kalshi markets (Kalshi's public
 feed appears to keep about two months of trades), and
 `GRIB_DB_PATH=data/kalshi.duckdb uv run python -m scoring.market_screen --rebuild` screens them

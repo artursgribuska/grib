@@ -88,7 +88,11 @@ def load(con: duckdb.DuckDBPyConnection, top: int) -> dict:
             news.setdefault(mid, []).append((ts, dom, title))
     bt_path = config.OUTPUT_DIR / "backtest.csv"   # read at call time
     backtest = pd.read_csv(bt_path) if bt_path.exists() else None
-    return dict(alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
+    screened = None
+    if "market_state" in t and "trades_w" in t:
+        from scoring.market_screen import screen
+        screened = screen(con)
+    return dict(screen=screened, alerts=alerts, sigs=sigs, cases=cases.set_index("position_id") if len(cases) else cases,
                 stats=stats, events=events, wallets=wallets, backtest=backtest,
                 funding=funding, scans=scans, reviews=reviews, venues=venues, news=news)
 
@@ -276,6 +280,24 @@ def live_watch_html(limit: int = 25) -> str:
       <th>Last activity (UTC)</th><th>Why</th><th>Result</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
 
 
+def screen_html(s, top: int = 10) -> str:
+    """The account-free market screen (scoring/market_screen.py): a second view, by market."""
+    if s is None or s.empty:
+        return ""
+    rows = "".join(f"<tr><td class=num>{i}</td><td class=num>{r.score:.1f}</td><td>{e(r.question)}"
+                   f"<small>{e(r.category.replace('_', ' '))}</small></td><td class=num>{r.cheap_flow:.1%}</td>"
+                   f"<td class=num>{r.rise:+.2f}</td><td class=num>{r.one_sided:.0%}</td>"
+                   f"<td class=num>${r.market_volume_pre:,.0f}</td></tr>"
+                   for i, r in enumerate(s.head(top).itertuples(), 1))
+    return f"""
+  <section><h2>Market screen (no account data)</h2>
+    <p class="muted">Markets ranked from trades alone: cheap buying of the eventual winner, price drift and
+      one-sided buying in the 48 hours before the outcome became public ({len(s)} markets screened). The same
+      method runs on venues that publish no accounts. Worth a closer look, not findings.</p>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Score</th><th>Market</th><th>Cheap winner buying</th>
+      <th>Price drift</th><th>Winner share</th><th>Volume before public</th></tr></thead><tbody>{rows}</tbody></table></div></section>"""
+
+
 def known_cases_html() -> str:
     """Headline of the known-cases study (eval/known_cases.py), if it has been run."""
     sm = None   # this dataset's own study first (known-cases / demo databases), else the main study
@@ -433,6 +455,7 @@ def render(d: dict) -> str:
     <code>uv run python -m app.review import decisions-….json</code>.</p>
   {alert_rows(d)}
   {rollups(d)}
+  {screen_html(d.get('screen'))}
   {known_cases_html()}
   {backtest_html(d['backtest'])}
 </main><script>{JS}</script></body></html>"""
