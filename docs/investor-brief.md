@@ -78,7 +78,7 @@ It works at two points in time:
 | Planted trades of known kinds (3 seeds, 200 real markets) | 82–84% of informed trades rank in the top 1%. Accounts that sold before the news reach the threshold 0–3% of the time |
 | Synthetic sportsbook export | Two day-old accounts backing a 9.0 outsider hours before an announcement rank #1 and #2, and the AI writes up both as High risk |
 | Unit cost | An AI case file costs about **7.6¢** in model usage (33 written: 11.3k input and 5.3k output tokens on average, Claude Sonnet 5.5 list prices). 1 of 33 needed a second attempt to fix a number |
-| Engineering | 124 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades; it runs on a schedule and posts new alerts to a team channel |
+| Engineering | 125 automated tests; a clean checkout installs and passes them. `python -m demo` reproduces the Maduro and Nobel results in about 15 minutes. The full pipeline reruns in minutes from cache. The live watch's first run covered 150 open markets and their last 7 days of trades; it runs on a schedule and posts new alerts to a team channel |
 
 **What the validation changed.** On its first run, the engine missed most of the Nobel
 case. The study found four real flaws in it, and a later case showed that one event can flood a raw ranking, so the queue now groups alerts by event. Each was fixed and re-checked against the

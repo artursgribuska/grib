@@ -24,3 +24,12 @@ def test_map_trade_uses_taker_side_price():
     assert abs(r["price"] - 0.39) < 1e-9 and abs(r["notional"] - 3.9) < 1e-9
     assert map_trade({**t, "taker_side": None}, "T") is None
     assert map_trade({**t, "count_fp": "0"}, "T") is None
+
+
+def test_deadline_is_scheduled_not_early_close():
+    base = {"ticker": "T", "title": "Q?", "market_type": "binary", "result": "no",
+            "settlement_ts": "2026-10-20T18:35:26Z"}
+    early = map_market({**base, "close_time": "2026-10-20T18:05:23Z", "latest_expiration_time": "2045-01-01T15:00:00Z"}, EV)
+    assert early["closes_at"].year == 2045
+    sched = map_market({**base, "close_time": "2026-10-01T03:59:00Z", "latest_expiration_time": "2026-10-08T14:00:00Z"}, EV)
+    assert sched["closes_at"].isoformat() == "2026-10-01T03:59:00"

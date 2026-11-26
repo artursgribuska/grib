@@ -37,6 +37,7 @@ VENUE = "kalshi"
 ANON = "kalshi:anonymous"
 SKIP_CATEGORIES = {"Sports", "Crypto", "Financials", "Climate and Weather"}
 MIN_CONTRACTS = 20_000
+EARLY_CLOSE_DAYS = 10
 DB = config.DATA_DIR / "kalshi.duckdb"
 
 
@@ -57,9 +58,14 @@ def map_market(m: dict, ev: dict) -> dict | None:
     meta = {"ticker": m.get("ticker"), "event_ticker": ev.get("event_ticker"), "series_ticker": ev.get("series_ticker"),
             "event_title": ev.get("title"), "kalshi_category": kcat, "trade_rows_per_fill": 1,
             "accounts": "not published (all trades under one anonymous account)"}
+    close, latest = _ts(m.get("close_time")), _ts(m.get("latest_expiration_time"))
+    # closes_at is the scheduled deadline. close_time is the actual close: the deadline itself, or an
+    # early close when the outcome became known. Expiry adds a settlement buffer of about a week, so a
+    # close more than EARLY_CLOSE_DAYS before the scheduled expiry was an early close.
+    deadline = latest if close and latest and (latest - close).days > EARLY_CLOSE_DAYS else close
     return {"market_id": m["ticker"], "venue": VENUE, "question": question,
             "category": categorize(question, [kcat.lower()]),
-            "opened_at": _ts(m.get("open_time")), "closes_at": _ts(m.get("close_time")),
+            "opened_at": _ts(m.get("open_time")), "closes_at": deadline,
             "resolved_at": _ts(m.get("settlement_ts")) or _ts(m.get("close_time")),
             "winning_outcome": "Yes" if m["result"] == "yes" else "No", "metadata_json": json.dumps(meta)}
 
