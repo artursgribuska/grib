@@ -280,7 +280,10 @@ in our data is a very large, diversified trader whose positions look like market
 self-contained page. Pick a reported case and press play: the winner's price, who was buying it
 (flagged accounts against everyone else), each flagged account's first buy, and the moment the live
 watch would have raised its alert, using only the trades available then, with a countdown to the
-news. At the public moment the page shows what the engine concluded afterwards. A fifth tab shows
+news. When the alert fires, the feed also shows the AI first look drafted blind at that moment
+(only the trades up to then, no venue profit figures): Maduro and Nobel *escalate*, the strikes and
+the ceasefire *monitor* (`--triage draft` drafts missing notes; they are cached). At the public
+moment the page shows what the engine concluded afterwards. A fifth tab shows
 an ordinary market for comparison, picked by rule (leak-prone category, no link to any reported
 story, the biggest price move before the news, nothing flagged): the price moves there too, and the
 watch stays quiet. Each tab has a link of its own (`timemachine.html#maduro-2026`). Hover for details;
@@ -425,10 +428,14 @@ note. The note is shown on the alert page, in the alert list, on the dashboard a
 How the guidance was checked (`eval/triage_eval.py`): the 33 historical alerts of the 600-market
 sample were triaged blind, each with only the trades up to its moment. The first version treated a
 long record as reason to close, and the alerts it closed won 10 of 13 times against 5.0 implied, the
-opposite of what closing should mean. The guidance now says a long record alone does not clear an
-alert. On the same 33 alerts (so describing the new behaviour, not an independent test) it escalates
-5, which won 4 times against 1.6 implied, monitors 27 and closes 1. All 66 notes passed the checks.
-A fresh sample is needed to validate the revised guidance. `uv run python -m watch.triage` drafts
+opposite of what closing should mean; the guidance now says a long record alone does not clear an
+alert. That evaluation also exposed a hindsight leak: the venue's lifetime profit and volume are as
+of today and can include the very win being judged, so evaluations now remove them. Without them, on
+the same 33 alerts, the revised guidance escalates 5 (3 won vs 1.7 implied), monitors 27 (12 vs 8.9)
+and closes 1. Its triage value is therefore **not yet demonstrated**; what it does provide is a
+checked, readable first look on every alert within seconds. The suggestion can also differ between
+drafts on borderline cases. A fresh sample is being built to test it. `uv run python -m watch.triage` drafts
+`uv run python -m watch.triage` drafts
 notes on demand.
 
 **Scorecard: checking live alerts prospectively.** Every live alert is a prediction made before

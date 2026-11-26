@@ -17,3 +17,12 @@ def test_point_in_time_hides_the_future():
     assert con.execute("SELECT winning_outcome, resolved_at FROM markets").fetchone() == (None, None)
     assert con.execute("SELECT count(DISTINCT market_id) FROM trades").fetchone()[0] == 1
     assert con.execute("SELECT count(*) FROM watch_alerts").fetchone()[0] == 1
+
+
+def test_hindsight_fields_are_removed():
+    import json
+    from eval.triage_eval import strip_hindsight
+    m = json.loads(strip_hindsight(json.dumps({"lifetime_realized_pnl_usd": 9e5, "lifetime_biggest_win_usd": 1,
+                                               "lifetime_volume_usd": 2, "lifetime_markets_traded": 3,
+                                               "first_seen_source": "venue_join_date"})))
+    assert set(m) == {"lifetime_markets_traded", "first_seen_source", "lifetime_markets_note"}

@@ -92,8 +92,37 @@ def market_event_rank(con, mid: str) -> tuple[int | None, bool]:
     return (int(r[0]), bool(r[1])) if r and r[0] is not None else (None, False)
 
 
+TRIAGE_CACHE = config.DATA_DIR / "known_cases" / "timemachine_triage.json"
+
+
+def first_look(con, key: str, a, mode: str) -> dict | None:
+    """The AI first look at this alert, drafted blind: only the trades up to the alert, no venue profit or
+    volume figures (eval/triage_eval.py). Cached in TRIAGE_CACHE; mode 'draft' calls the API for missing
+    notes, 'cached' only reads the cache, 'off' shows none."""
+    if mode == "off":
+        return None
+    ident = f"{key}|{a.kind}|{a.market_id}|{a.outcome}|{a.account_id}|{pd.Timestamp(a.at).isoformat()}"
+    try:
+        cache = json.loads(TRIAGE_CACHE.read_text())
+    except (OSError, ValueError):
+        cache = {}
+    if ident not in cache and mode == "draft":
+        from eval.triage_eval import point_in_time
+        from watch import triage
+        pit = point_in_time(con, a)
+        triage.run(pit)
+        n = triage.get_note(pit, a.kind, a.market_id, a.outcome, a.account_id)
+        pit.close()
+        if n:
+            cache[ident] = {"action": n["suggested_action"], "reason": n["action_reason"], "passed": n["passed"],
+                            "model": n["model"]}
+            TRIAGE_CACHE.parent.mkdir(parents=True, exist_ok=True)
+            TRIAGE_CACHE.write_text(json.dumps(cache, indent=1))
+    return cache.get(ident)
+
+
 def case_data(con, key: str, facts, seen, ranks: dict, n_events: int, mid: str | None = None,
-              title: str | None = None, about: str | None = None) -> dict:
+              title: str | None = None, about: str | None = None, triage_mode: str = "cached") -> dict:
     mid = mid or pick_market(con, key)
     q, winner, public = con.execute(
         "SELECT question, winning_outcome, certainty_at FROM market_state WHERE market_id = ?", [mid]).fetchone()
@@ -149,9 +178,12 @@ def case_data(con, key: str, facts, seen, ranks: dict, n_events: int, mid: str |
                          "low": bool(pd.notna(r.markets) and r.markets <= 5), "why": top_signals(r.contributions_json)})
         if len(accounts) >= MAX_DOTS:
             break
+    first_winner = next((a for a in alerts.itertuples() if a.on_winner), None) if len(alerts) else None
     watch = [{"t": _ms(a.at), "kind": a.kind.replace("_", " "), "id": short_account(a.account_id), "usd": round(float(a.usd)),
               "px": round(float(a.avg_price), 3), "detail": a.detail, "lead": round(float(a.hours_before_public), 1),
-              "winner": bool(a.on_winner)} for a in alerts.itertuples()] if len(alerts) else []
+              "winner": bool(a.on_winner),
+              "ai": first_look(con, key, a, triage_mode) if first_winner is not None and a.Index == first_winner.Index else None}
+             for a in alerts.itertuples()] if len(alerts) else []
     about = about or next(c["about"] for c in CASES if c["key"] == key)
     first_win = next((w for w in watch if w["winner"]), None)
     top = fl.iloc[0] if len(fl) else None
@@ -172,7 +204,7 @@ def case_data(con, key: str, facts, seen, ranks: dict, n_events: int, mid: str |
     }
 
 
-def build(con, out: Path | None = None) -> Path:
+def build(con, out: Path | None = None, triage_mode: str = "cached") -> Path:
     out = out or config.DATA_DIR / "known_cases" / "timemachine.html"
     facts = _account_facts(con)
     seen = con.execute("SELECT account_id, count(DISTINCT market_id) n FROM trades GROUP BY 1").df().set_index("account_id").n
@@ -180,7 +212,7 @@ def build(con, out: Path | None = None) -> Path:
     present = {r[0] for r in con.execute(f"""SELECT DISTINCT k."case" FROM known_case_markets k
                                              JOIN position_scores ps USING (market_id)
                                              WHERE ps.score >= {ROLLUP_MIN_SCORE}""").fetchall()}
-    data = [case_data(con, k, facts, seen, ranks, n_events) for k, _ in SHOWN if k in present]
+    data = [case_data(con, k, facts, seen, ranks, n_events, triage_mode=triage_mode) for k, _ in SHOWN if k in present]
     for mid in control_candidates(con):          # the control: first candidate where the watch stays quiet
         rank = market_event_rank(con, mid)
         c = case_data(con, "control", facts, seen, {"control": rank}, n_events, mid=mid, title="For comparison: an ordinary market",
@@ -207,9 +239,11 @@ TEMPLATE = (Path(__file__).parent / "timemachine.html").read_text()
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db", default=str(config.DATA_DIR / "known_cases.duckdb"))
+    ap.add_argument("--triage", choices=["cached", "draft", "off"], default="cached",
+                    help="AI first look at each case's first alert: 'draft' calls the API for missing notes (~1 cent each)")
     a = ap.parse_args(argv)
     con = duckdb.connect(a.db, read_only=True)
-    out = build(con)
+    out = build(con, triage_mode=a.triage)
     con.close()
     print(f"Written to {out}")
     return 0

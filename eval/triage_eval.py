@@ -9,8 +9,9 @@ watch/triage.py then drafts its note. Afterwards, per suggested action, we compa
 alerted side won with how often its price implied. If "escalate" beats its odds by more than
 "close", the triage adds information.
 
-Caveat: the venue record (lifetime markets, volume, profit) is as of today, not as of the alert,
-the one piece of hindsight the note can see. Small samples: read the counts, not just the rates.
+The venue's lifetime profit, biggest win and volume are removed: they are as of today and can
+contain the very outcome being judged. The lifetime market count (as of today) is kept, as the watch
+itself uses it. Small samples: read the counts, not just the rates.
 """
 
 from __future__ import annotations
@@ -28,6 +29,21 @@ from watch.follow_up import excess_wins
 from watch.run_live import ALERTS_DDL, SKIP_CATEGORIES
 
 
+HINDSIGHT = ("lifetime_realized_pnl_usd", "lifetime_biggest_win_usd", "lifetime_volume_usd")
+
+
+def strip_hindsight(meta: str | None) -> str:
+    """The venue's lifetime profit, biggest win and volume are as of today and can contain the very
+    outcome being evaluated (a winning bet raises them). Only the join date is a fixed fact; the
+    lifetime market count is kept because the watch itself uses it, and is marked as of today."""
+    m = json.loads(meta or "{}")
+    for k in HINDSIGHT:
+        m.pop(k, None)
+    if "lifetime_markets_traded" in m:
+        m["lifetime_markets_note"] = "count as of today, not as of the alert"
+    return json.dumps(m)
+
+
 def point_in_time(src, a) -> duckdb.DuckDBPyConnection:
     """An in-memory live database as it stood when alert `a` fired."""
     con = duckdb.connect()
@@ -41,6 +57,7 @@ def point_in_time(src, a) -> duckdb.DuckDBPyConnection:
     con.register("_t", t)
     con.execute("INSERT INTO trades SELECT * FROM _t")
     acc = src.execute("SELECT * FROM accounts WHERE account_id = ?", [a.account_id]).df()
+    acc["metadata_json"] = acc.metadata_json.map(strip_hindsight)
     con.register("_a", acc)
     con.execute("INSERT INTO accounts SELECT * FROM _a")
     con.execute("INSERT INTO watch_alerts VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -65,8 +82,8 @@ def run(src, alerts: pd.DataFrame, client=None) -> pd.DataFrame:
 def report(r: pd.DataFrame) -> tuple[str, dict]:
     res = {}
     lines = ["# AI first look on historical alerts", "",
-             "Each alert was triaged blind, with only the trades up to the moment it fired (venue records are as of "
-             "today). Then: how often did the alerted side win, against what its price implied?", "",
+             "Each alert was triaged blind, with only the trades up to the moment it fired and no venue profit or "
+             "volume figures (they are as of today). Then: how often did the alerted side win, against what its price implied?", "",
              "| Suggested action | Alerts | Won | Implied by prices | Won minus implied | exact p (one-sided) |",
              "|---|---:|---:|---:|---:|---:|"]
     for act in triage.ACTIONS[::-1]:

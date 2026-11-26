@@ -72,6 +72,8 @@ select{font:inherit;font-size:13px;background:var(--surface);color:var(--ink);bo
 .feed li.alert{background:var(--alert-bg);border-left:3px solid var(--alert)}
 .feed li.alert .lbl{color:var(--alert);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 .feed li.public{border:1px dashed var(--axis)}
+.feed li .ai{margin-top:6px;padding-top:6px;border-top:1px solid color-mix(in srgb,var(--alert) 30%,transparent);font-size:13px}
+.feed li .ai b{font-weight:700}
 .feed li.public .lbl{font-weight:700}
 .feed .empty{color:var(--ink2);font-size:13px;padding:6px 10px}
 @keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -256,7 +258,7 @@ function buildFeed() {
     const li = document.createElement("li"); li.className = it.kind; li.hidden = true;
     const tm = document.createElement("time"); tm.textContent = fmtT(it.t) + (it.t < C.public ? " · " + dur(C.public - it.t) + " before public" : "");
     li.appendChild(tm);
-    const p = document.createElement("div");
+    const p = document.createElement("div"); let extra = null;
     if (it.kind === "buy") { const a = it.a; const sw = document.createElement("span"); sw.className = "sw"; p.appendChild(sw);
       const who = a.age !== null ? (a.age < 1 ? "An account under a day old" : `An account ${Math.round(a.age)} days old`) : a.low ? "A low-history account" : "An account";
       const b = document.createElement("b"); b.textContent = `${who} (${a.id})`; p.appendChild(b);
@@ -264,9 +266,12 @@ function buildFeed() {
     } else if (it.kind === "alert") { const w = it.w;
       const lbl = document.createElement("div"); lbl.className = "lbl"; lbl.textContent = "⚑ Live-watch alert · " + w.kind; li.appendChild(lbl);
       p.textContent = `${w.id}: ${money(w.usd)} on '${w.winner ? C.winner : "another outcome"}' at ${w.px.toFixed(2)}. ${w.detail}.`;
+      if (w.ai) { extra = document.createElement("div"); extra.className = "ai";
+        const h = document.createElement("b"); h.textContent = `AI first look, drafted blind at this moment: ${w.ai.action[0].toUpperCase() + w.ai.action.slice(1)}. `;
+        extra.append(h, document.createTextNode(w.ai.reason)); }
     } else { const lbl = document.createElement("div"); lbl.className = "lbl"; lbl.textContent = "The outcome becomes public";
       li.appendChild(lbl); p.textContent = `The price of '${C.winner}' passes 95% and stays there.`; }
-    li.appendChild(p); ol.insertBefore(li, ol.children[1] || null);
+    li.appendChild(p); if (extra) li.appendChild(extra); ol.insertBefore(li, ol.children[1] || null);
     return {t: it.t, li};
   });
 }
