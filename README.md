@@ -406,6 +406,15 @@ lifetime markets, volume, profit) and other alerts on the same market. A long li
 points to an active trader, which lets a reviewer close the alert quickly; a days-old account with one
 market is the case to escalate before payout. `uv run python -m app.live_pages` rebuilds them.
 
+**AI first look.** After each scan, Claude drafts a short note on every new or changed alert
+(`watch/triage.py`): what happened, the strongest ordinary explanation, and a suggested action
+(close, monitor or escalate) with the reason. It writes from a fact sheet of our own data only. Every
+number must appear in that sheet and the language must be neutral (the case-file checks), with one
+retry. Notes are cached by the facts, so unchanged alerts cost nothing: about 1¢ per note. On the
+first six live alerts, all on accounts with hundreds of markets behind them, every note suggested
+"close" and passed the checks. The note is shown on the alert page and is a suggestion for a human
+reviewer, never a decision. `uv run python -m watch.triage` drafts notes on demand.
+
 **Scorecard: checking live alerts prospectively.** Every live alert is a prediction made before
 the outcome was known. After each scan, `watch/follow_up.py` looks up the markets of earlier alerts
 and, once they resolve, records whether the flagged side won (`data/live/scorecard.md`, and a

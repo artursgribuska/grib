@@ -120,7 +120,7 @@ def render(con, a) -> str:
                          f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{t:%Y-%m-%d %H:%M}</td></tr>"
                          for k, o, acc, u, p, t in others) or "<tr><td colspan=6 class=muted>None</td></tr>"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Live alert: {e(a.question[:60])}</title><style>{CSS}</style></head>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Live alert: {e(a.question[:60])}</title><style>{CSS}{TRIAGE_CSS}</style></head>
 <body><main>
 <p class="muted"><a href="index.html">All live alerts</a></p>
 <h1>{e(a.question)}</h1>
@@ -134,6 +134,7 @@ identify or accuse any person; the account is pseudonymous and shown truncated.<
   <div class="stat"><b>{e(status)}</b><span>market status</span></div>
 </div>
 <p>{e(a.detail)}. Raised {a.first_alerted_at:%Y-%m-%d %H:%M} UTC; the activity behind it ended {a.activity_at:%Y-%m-%d %H:%M} UTC.</p>
+{triage_html(con, a)}
 <section><h2>Price and this account's buys</h2>{chart(outcome_prices(con, a.market_id, a.outcome), buys, a.activity_at, a.outcome)}</section>
 <section><h2>What the venue says about the account</h2><div class="scroll"><table><tbody>{facts}</tbody></table></div>
 <p class="muted">A long record of many markets usually points to an active trader rather than an account set up for one bet.</p></section>
@@ -146,6 +147,31 @@ identify or accuse any person; the account is pseudonymous and shown truncated.<
 </main><script>{CHART_JS}</script></body></html>"""
 
 
+ACTION_LABEL = {"close": "Suggests: close", "monitor": "Suggests: monitor", "escalate": "Suggests: escalate"}
+TRIAGE_CSS = """
+.triage{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:12px 0;background:var(--panel)}
+.triage h2{margin:0 0 6px;font-size:15px}.act{display:inline-block;font-weight:600;font-size:13px;padding:2px 10px;
+border-radius:999px;margin-left:8px;border:1px solid currentColor}
+.act.close{color:#0a7d1e}.act.monitor{color:#9a6700}.act.escalate{color:#c42b2c}
+@media (prefers-color-scheme:dark){.act.close{color:#53c556}.act.monitor{color:#fbb315}.act.escalate{color:#eb6263}}
+.triage p{margin:6px 0}.triage .muted{font-size:12.5px}"""
+
+
+def triage_html(con, a) -> str:
+    from watch.triage import get_note
+    n = get_note(con, a.kind, a.market_id, a.outcome, a.account_id)
+    if not n:
+        return ""
+    act = n["suggested_action"]
+    checks = "number and language checks passed" if n["passed"] else f"needs attention: {n['problems']}"
+    return f"""<section class="triage"><h2>AI first look<span class="act {e(act)}">{e(ACTION_LABEL.get(act, act))}</span></h2>
+<p><b>What happened.</b> {e(n['what_happened'])}</p>
+<p><b>Strongest ordinary explanation.</b> {e(n['innocent_explanation'])}</p>
+<p><b>Why this suggestion.</b> {e(n['action_reason'])}</p>
+<p class="muted">Drafted by {e(n['model'])} from the facts on this page only, for a human reviewer; {e(checks)}.
+It is a suggestion, not a decision.</p></section>"""
+
+
 def build_all(con, out_dir=None) -> list:
     out_dir = out_dir or OUT
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -154,16 +180,23 @@ def build_all(con, out_dir=None) -> list:
                                  ORDER BY first_alerted_at DESC, usd DESC""").df().itertuples())
     for a in alerts:
         (out_dir / page_name(a)).write_text(render(con, a))
+    from watch.triage import get_note
+
+    def suggestion(a) -> str:
+        n = get_note(con, a.kind, a.market_id, a.outcome, a.account_id)
+        return e(n["suggested_action"]) if n else "—"
     rows = "".join(f'<tr><td>{a.first_alerted_at:%Y-%m-%d %H:%M}</td><td>{e(a.kind.replace("_", " "))}</td>'
                    f'<td><a href="{e(page_name(a))}">{e(a.question)}</a><small>\'{e(a.outcome)}\' · '
-                   f'{e(short_account(a.account_id))}</small></td><td class=num>${a.usd:,.0f}</td></tr>' for a in alerts)
+                   f'{e(short_account(a.account_id))}</small></td><td class=num>${a.usd:,.0f}</td>'
+                   f'<td>{suggestion(a)}</td></tr>' for a in alerts)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     (out_dir / "index.html").write_text(f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Live alerts</title><style>{CSS}</style></head>
 <body><main><h1>Live alerts</h1><p class="muted">Alerts raised on open markets, newest first; built {built} UTC.
 Leads for review, not findings.</p>
-<div class="scroll"><table><thead><tr><th>Raised (UTC)</th><th>Alert</th><th>Market</th><th class=num>Position</th></tr></thead>
-<tbody>{rows or '<tr><td colspan=4 class=muted>No alerts yet</td></tr>'}</tbody></table></div></main></body></html>""")
+<div class="scroll"><table><thead><tr><th>Raised (UTC)</th><th>Alert</th><th>Market</th><th class=num>Position</th>
+<th>AI first look</th></tr></thead>
+<tbody>{rows or '<tr><td colspan=5 class=muted>No alerts yet</td></tr>'}</tbody></table></div></main></body></html>""")
     return alerts
 
 

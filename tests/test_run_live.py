@@ -32,6 +32,8 @@ def test_live_run_records_new_alerts_once(tmp_path, monkeypatch):
     monkeypatch.setattr(run_live, "DB", tmp_path / "live.duckdb")
     monkeypatch.setattr(run_live, "OUT", tmp_path / "live")
     monkeypatch.setattr(run_live, "CachedClient", lambda: FakeHttp())
+    import watch.triage
+    monkeypatch.setattr(watch.triage, "run", lambda con, client=None: {"drafted": 0})   # never call the API in tests
     monkeypatch.setattr(run_live.DataApiClient, "iter_market_trades",
                         lambda self, cid, max_rows=None, refresh=False: iter(sorted(TRADES, key=lambda r: -r["timestamp"])))
     import ingest.enrich
@@ -62,3 +64,12 @@ def test_dashboard_shows_live_alerts(tmp_path, monkeypatch):
     con.close()
     html = live_watch_html()
     assert "Live watch" in html and "&lt;X&gt;" in html and ("ab" * 20) not in html and "$12,000" in html
+
+
+def test_live_run_writes_nothing_outside_its_output(tmp_path, monkeypatch):
+    """Regression: alert pages once followed their own default path and wrote into the real data folder."""
+    from app import live_pages
+    written = []
+    monkeypatch.setattr(live_pages, "build_all", lambda con, out_dir=None: written.append(out_dir) or [])
+    test_live_run_records_new_alerts_once(tmp_path, monkeypatch)
+    assert written and all(str(d).startswith(str(tmp_path)) for d in written)

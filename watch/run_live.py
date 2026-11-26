@@ -141,9 +141,14 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
     except Exception:
         log.exception("follow-up of earlier alerts failed; will retry next scan")
         n_resolved, track = 0, None
+    try:                                   # AI first-look notes (skipped without an API key)
+        from watch import triage
+        log.info("triage: %s", triage.run(con))
+    except Exception:
+        log.exception("triage notes failed; the alerts themselves are recorded")
     try:                                   # one page per alert, with the context a reviewer needs
         from app import live_pages
-        live_pages.build_all(con)
+        live_pages.build_all(con, out_dir=OUT / "alerts")
     except Exception:
         log.exception("alert pages failed; the alerts themselves are recorded")
     con.close()
