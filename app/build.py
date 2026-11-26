@@ -266,6 +266,11 @@ def live_watch_html(limit: int = 25) -> str:
                                       detail, {res}, a.market_id FROM watch_alerts a {join}
                                ORDER BY first_alerted_at DESC, activity_at DESC LIMIT ?""", [limit]).fetchall()
         n = con.execute("SELECT count(*), count(DISTINCT market_id) FROM watch_alerts").fetchone()
+        has_tri = bool(con.execute("SELECT count(*) FROM information_schema.tables "
+                                   "WHERE table_name = 'watch_triage'").fetchone()[0])
+        tri = dict(((k, m, o, acc), act) for k, m, o, acc, act in con.execute(
+            "SELECT kind, market_id, outcome, account_id, json_extract_string(note_json, '$.suggested_action') "
+            "FROM watch_triage").fetchall()) if has_tri else {}
         score = None
         if has_out:
             from watch.follow_up import excess_wins, scorecard
@@ -276,8 +281,8 @@ def live_watch_html(limit: int = 25) -> str:
     body = "".join(
         f"<tr><td>{e(k.replace('_', ' '))}</td><td>{_alert_link(k, mid, q, o, a)}<small>'{e(o)}' · {e(short_account(a))}</small></td>"
         f"<td class=num>${u:,.0f}</td><td class=num>{p:.2f}</td><td>{e(str(act)[:16])}<small>raised {e(str(t)[:16])}</small></td>"
-        f"<td>{e(d)}</td><td>{e(r)}</td></tr>"
-        for k, q, o, a, t, act, u, p, d, r, mid in rows) or "<tr><td colspan=7 class=muted>No alerts yet</td></tr>"
+        f"<td>{e(d)}</td><td>{e(tri.get((k, mid, o, a), '—'))}</td><td>{e(r)}</td></tr>"
+        for k, q, o, a, t, act, u, p, d, r, mid in rows) or "<tr><td colspan=8 class=muted>No alerts yet</td></tr>"
     track = ""
     if score and score["resolved"]:
         track = (f" Of the {score['resolved']} alerts whose markets have resolved, the flagged side won "
@@ -287,7 +292,7 @@ def live_watch_html(limit: int = 25) -> str:
     <p class="muted">Alerts on markets that have not resolved yet, raised before anyone knows the winner
       ({n[0]} alerts across {n[1]} markets so far).{track} Leads for review, not findings.</p>
     <div class="scroll"><table><thead><tr><th>Alert</th><th>Market</th><th>Position</th><th>Avg price</th>
-      <th>Last activity (UTC)</th><th>Why</th><th>Result</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
+      <th>Last activity (UTC)</th><th>Why</th><th>AI first look</th><th>Result</th></tr></thead><tbody>{body}</tbody></table></div></section>"""
 
 
 def screen_html(s, top: int = 10) -> str:

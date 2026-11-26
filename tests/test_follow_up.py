@@ -81,3 +81,16 @@ def test_exact_p_matches_hand_calculation():
     from watch.follow_up import exact_p
     assert abs(exact_p([0.5, 0.5], 2) - 0.25) < 1e-12 and abs(exact_p([0.5, 0.5], 1) - 0.75) < 1e-12
     assert exact_p([0.1, 0.2], 0) == 1.0
+
+
+def test_digest_puts_escalations_first(tmp_path, monkeypatch):
+    from types import SimpleNamespace as NS
+    import watch.run_live as rl
+    monkeypatch.setattr(rl, "OUT", tmp_path)
+    a = NS(kind="long_shot_entry", market_id="m1", outcome="Yes", account_id="0x" + "1" * 40, question="Big?", usd=9000,
+           avg_price=0.1, detail="d", at=NOW)
+    b = NS(kind="long_shot_entry", market_id="m2", outcome="Yes", account_id="0x" + "2" * 40, question="Small?", usd=100,
+           avg_price=0.1, detail="d", at=NOW)
+    text = rl.write_digest([a, b], 2, 10, NOW, None, {("long_shot_entry", "m2", "Yes", "0x" + "2" * 40): "escalate",
+                                                     ("long_shot_entry", "m1", "Yes", "0x" + "1" * 40): "close"})
+    assert text.index("Small?") < text.index("Big?") and "AI suggests: escalate" in text

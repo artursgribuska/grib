@@ -151,8 +151,17 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
         live_pages.build_all(con, out_dir=OUT / "alerts")
     except Exception:
         log.exception("alert pages failed; the alerts themselves are recorded")
+    suggestions = {}
+    try:
+        from watch.triage import get_note
+        for a in new:
+            n = get_note(con, a.kind, a.market_id, a.outcome, a.account_id)
+            if n:
+                suggestions[(a.kind, a.market_id, a.outcome, a.account_id)] = n["suggested_action"]
+    except Exception:
+        log.exception("could not read triage notes for the digest")
     con.close()
-    text = write_digest(new, len(pairs), n_trades, now, track)
+    text = write_digest(new, len(pairs), n_trades, now, track, suggestions)
     if new:
         from app.notify import notify
         notify(text)
@@ -160,14 +169,20 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
             "newly_resolved": n_resolved}
 
 
-def write_digest(new, n_markets: int, n_trades: int, now: datetime, track: dict | None = None) -> str:
+def write_digest(new, n_markets: int, n_trades: int, now: datetime, track: dict | None = None,
+                 suggestions: dict | None = None) -> str:
     from scoring.score import short_account
     lines = [f"# Live watch — {now:%Y-%m-%d %H:%M} UTC", "",
              f"{n_markets} open markets, {n_trades:,} trades from the last {WINDOW_DAYS} days. "
              f"**{len(new)} new alert(s).** Leads for review, not findings.", ""]
-    for a in sorted(new, key=lambda x: -x.usd):
-        lines.append(f"- **{a.kind.replace('_', ' ')}** · {a.question} · '{a.outcome}' · {short_account(a.account_id)} · "
-                     f"${a.usd:,.0f} at {a.avg_price:.2f} · {a.detail} · last activity {a.at:%Y-%m-%d %H:%M} UTC")
+    order = {"escalate": 0, "monitor": 1, "close": 2}
+    sugg = suggestions or {}
+    key = lambda a: (a.kind, a.market_id, a.outcome, a.account_id)
+    for a in sorted(new, key=lambda x: (order.get(sugg.get(key(x)), 1), -x.usd)):   # escalations first
+        s = sugg.get(key(a))
+        lines.append(f"- {'**AI suggests: ' + s + '** · ' if s else ''}**{a.kind.replace('_', ' ')}** · {a.question} · "
+                     f"'{a.outcome}' · {short_account(a.account_id)} · ${a.usd:,.0f} at {a.avg_price:.2f} · {a.detail} · "
+                     f"last activity {a.at:%Y-%m-%d %H:%M} UTC")
     if new:
         lines += ["", "Each alert has a page with the price, the account's buys and its venue record: data/live/alerts/index.html"]
     if track and track["resolved"]:
