@@ -39,3 +39,26 @@ exploratory.
 Venue account records (join date, lifetime market count) are as of today, not as of each
 alert; older markets make this hindsight larger, mostly in the conservative direction (accounts
 that were fresh then may have traded more since, so fewer alerts fire).
+
+## Results (added after the analysis; nothing above was changed)
+
+Sample: 600 markets resolved 29 June – 27 September 2026, none in any earlier sample; 573 in the
+watch's scope. The code was unchanged from the commit above. One operational fix was needed: the
+output folder `data/watch_eval2/` did not exist and the script does not create it, so it was
+created by hand and the script rerun (fixed in code afterwards).
+
+| | Pre-registered test | Result | Verdict |
+|---|---|---|---|
+| **H1** | First alert per market, exact one-sided p < 0.05 | 54 markets: the alerted side won **20** vs **19.2** implied, p = **0.46**. All 65 alerts: 26 vs 23.3, p = 0.26 | **Not supported** |
+| **H2** | *Escalate* beats its odds by more than *monitor*/*close* | Escalate 2 (1 won vs 1.1 implied), monitor 59 (25 vs 21.7), close 4 (0 vs 0.4) | **Not supported** |
+| **H3** | Fewer than 10 alerts per 1,000 market-days | 8.1 | Supported |
+
+Exploratory (not pre-registered): long-shot entries won **0 of 18** against 2.1 implied. Pooling
+both out-of-sample sets, one alert per market: 72 markets, 31 won vs 26.2 implied, exact p = 0.12;
+long-shot entries 2 of 24 vs 3.0. All 65 triage notes passed the number and language checks.
+
+**What this means.** The earlier out-of-sample result (11 of 18, p = 0.024) did not replicate. The
+claim that live alerts, taken together, beat the market's odds is **not established**. What stands:
+the watch flags the publicly reported cases hours to days before the news, it raises a manageable
+number of alerts, and every alert arrives with checked context. Whether flagged positions are
+informed has to be judged case by case, which is the reviewer's job.
