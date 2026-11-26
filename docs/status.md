@@ -87,7 +87,14 @@ window. Details are in the README and the commit history.
   could not be scanned.
 - **GDELT news** covers only the last ~3 months. It also rate-limits; failed searches are
   marked as failed and retried, never reported as "no news".
-- **The live watch** needs scheduling (every few hours) to protect payouts in practice.
+- **The live watch** needs scheduling (every few hours) to protect payouts in practice. Its
+  prospective scorecard has 6 alerts and none resolved yet; the replayed equivalent (5 of 17 won
+  vs 3.6 implied) is in the right direction but not significant.
+- **GDELT is unreliable as the only news source.** On 26 November most requests were refused with
+  HTTP 429 for minutes at a time. Failures are recorded as "news source unreachable", never as "no
+  news", but a production version needs a second, paid news source.
+- **Kalshi's public feed** appears to keep only about two months of trades and has no accounts, so
+  only the market screen applies, and only to recently settled markets.
 
 ## Needs a decision
 
