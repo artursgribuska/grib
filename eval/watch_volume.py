@@ -52,12 +52,22 @@ def p_value(z: float | None) -> float | None:
     return None if z is None else 0.5 * math.erfc(z / math.sqrt(2))
 
 
+def first_per_market(a: pd.DataFrame) -> pd.DataFrame:
+    """One alert per market (the earliest): alerts on the same market are not independent draws."""
+    return a.sort_values("at").groupby("market_id", as_index=False).head(1) if len(a) else a
+
+
 def summarise(a: pd.DataFrame, n_markets: int) -> dict:
     x = excess_wins(a.assign(won=a.on_winner)) if len(a) else {"resolved": 0, "wins": 0, "expected_wins": 0.0, "z": None}
+    f = first_per_market(a)
+    y = excess_wins(f.assign(won=f.on_winner)) if len(f) else {"resolved": 0, "wins": 0, "expected_wins": 0.0, "z": None}
     return {"markets": n_markets, "alerts": int(len(a)),
             "per_1000_market_days": round(1000 * len(a) / (n_markets * DAYS), 2) if n_markets else None,
             "wins": x["wins"], "expected_wins": round(x["expected_wins"], 2),
             "z": None if x["z"] is None else round(x["z"], 2), "p_one_sided": None if x["z"] is None else round(p_value(x["z"]), 3),
+            "per_market": {"markets_alerted": int(len(f)), "wins": y["wins"], "expected_wins": round(y["expected_wins"], 2),
+                           "z": None if y["z"] is None else round(y["z"], 2),
+                           "p_one_sided": None if y["z"] is None else round(p_value(y["z"]), 3)},
             "by_kind": {k: {"alerts": int(len(g)), "wins": int(g.on_winner.sum()), "implied": round(float(g.avg_price.sum()), 2)}
                         for k, g in a.groupby("kind")} if len(a) else {}}
 
@@ -65,6 +75,8 @@ def summarise(a: pd.DataFrame, n_markets: int) -> dict:
 def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
     m = ordinary_markets(con, exclude)
     a = replay_all(con, m)
+    if len(a):                                             # kept so the analysis can be redone without a replay
+        a.to_csv(config.OUTPUT_DIR / "watch_volume_alerts.csv", index=False)
     scope_m = m[~m.category.isin(SKIP_CATEGORIES)]
     res = {"watch_scope": summarise(a[a.market_id.isin(scope_m.market_id)] if len(a) else a, len(scope_m)),
            "all_markets": summarise(a, len(m))}
@@ -78,6 +90,10 @@ def report(con, exclude: set[str] | None = None) -> tuple[str, dict]:
         lines.append(f"| {label} | {r['markets']} | {r['alerts']} | {r['per_1000_market_days']} | {r['wins']} | "
                      f"{r['expected_wins']} | {r['z'] if r['z'] is not None else '—'} | "
                      f"{r['p_one_sided'] if r['p_one_sided'] is not None else '—'} |")
+    pm = res["watch_scope"]["per_market"]
+    lines += ["", f"Counting only the first alert on each market (alerts on one market are not independent): "
+                  f"{pm['markets_alerted']} markets, the alerted side won {pm['wins']} vs {pm['expected_wins']} implied "
+                  f"(z = {pm['z']}, one-sided p = {pm['p_one_sided']}). Watch scope."]
     lines += ["", "By kind (watch scope):", ""]
     for k, v in res["watch_scope"]["by_kind"].items():
         lines.append(f"- {k.replace('_', ' ')}: {v['alerts']} alerts, the alerted side won {v['wins']}, prices implied {v['implied']}")

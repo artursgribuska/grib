@@ -7,11 +7,14 @@ from tests.test_features import build_db
 def test_summarise_counts_and_significance():
     from eval.watch_volume import p_value, summarise
     a = pd.DataFrame({"on_winner": [True, False, True, False], "avg_price": [0.1, 0.2, 0.1, 0.1],
-                      "kind": ["long_shot_entry"] * 3 + ["run_up_initiator"]})
+                      "kind": ["long_shot_entry"] * 3 + ["run_up_initiator"], "market_id": ["a", "a", "b", "c"],
+                      "at": pd.to_datetime(["2026-01-02", "2026-01-01", "2026-01-01", "2026-01-01"])})
     s = summarise(a, 10)
     assert s["alerts"] == 4 and s["wins"] == 2 and abs(s["expected_wins"] - 0.5) < 1e-9
     assert s["z"] > 0 and 0 < s["p_one_sided"] < 0.5
     assert s["by_kind"]["long_shot_entry"] == {"alerts": 3, "wins": 2, "implied": 0.4}
+    pm = s["per_market"]                         # market 'a' counts once, by its earliest alert (a loss)
+    assert pm["markets_alerted"] == 3 and pm["wins"] == 1 and abs(pm["expected_wins"] - 0.4) < 1e-9
     assert p_value(0.0) == 0.5 and summarise(a.iloc[:0], 10)["z"] is None
 
 

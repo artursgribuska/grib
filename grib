@@ -14,6 +14,7 @@ dossiers|app.dossier|Build event dossiers (data/dossiers/)
 dashboard|app.build|Build the dashboard (data/dashboard/index.html)
 review|app.review|Analyst review: queue, decide, import, history, stats
 watch|watch.run_live|Live watch on open markets (--every 3 to keep running)
+watch-all|watch.run_all|Every live watch: Polymarket and Kalshi (--every 3)
 scorecard|watch.follow_up|How earlier live alerts turned out
 alert-pages|app.live_pages|One page per live alert (data/live/alerts/)
 operator|ingest.csv_loader|Load an operator bet export (CSV)
