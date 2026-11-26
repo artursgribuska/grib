@@ -193,9 +193,17 @@ def alert_rows(d: dict) -> str:
     return "".join(rows)
 
 
+def _event_link(event_key: str) -> str:
+    """Link an event to its dossier page when one has been built (python -m app.dossier)."""
+    from app.dossier import slug
+    if (config.OUTPUT_DIR / "dossiers" / f"{slug(event_key)}.html").exists():
+        return f'<a href="../dossiers/{e(slug(event_key))}.html">{e(event_key)}</a>'
+    return e(event_key)
+
+
 def rollups(d: dict) -> str:
     ev, wl = d["events"], d["wallets"]
-    ev_rows = "".join(f"<tr><td>{e(r.event_key)}</td><td class=num>{r.wallets}</td><td class=num>{r.low_history_wallets}</td>"
+    ev_rows = "".join(f"<tr><td>{_event_link(r.event_key)}</td><td class=num>{r.wallets}</td><td class=num>{r.low_history_wallets}</td>"
                       f"<td class=num>{r.markets}</td><td class=num>${r.total_usd:,.0f}</td><td class=num>{r.max_score:.1f}</td></tr>"
                       for r in ev.itertuples()) or "<tr><td colspan=6 class=muted>None</td></tr>"
     wl_rows = "".join(f"<tr><td>{e(short_account(r.account_id))}</td><td class=num>{r.alerts}</td>"

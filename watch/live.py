@@ -27,7 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import duckdb
 import pandas as pd
@@ -215,7 +215,7 @@ def main(argv=None) -> int:
         print(text)
         print(f"(written to {out})")
     else:
-        alerts = scan(con, datetime.utcnow())
+        alerts = scan(con, datetime.now(timezone.utc).replace(tzinfo=None))
         for x in alerts:
             print(json.dumps(asdict(x), default=str))
     con.close()

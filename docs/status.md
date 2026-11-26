@@ -16,7 +16,7 @@ figure below can be reproduced with the command shown next to it.
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`) | `watch.run_live --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
-| Tests | 111 passing | `uv run pytest` |
+| Tests | 113 passing | `uv run pytest` |
 
 ## What it shows
 

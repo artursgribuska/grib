@@ -42,7 +42,8 @@ and record decisions (see *Reviewing alerts*). Step by step, first time:
 9. `uv run python -m cases.run` — writes AI case files for the top 10 alerts into `data/cases/` (`--bundles-only` works without a key)
 10. `uv run python -m eval.backtest --markets 200 --seed 1` (and `uv run python -m eval.known_cases`) — plants synthetic trades in an in-memory copy of the data and measures how the engine ranks them (≈10 s)
 11. `uv run python -m app.build` — writes a self-contained dashboard to `data/dashboard/index.html` (top 50 alerts with score bars, signal reasons, case files, event/wallet roll-ups and the latest backtest); open it in any browser
-12. `uv run pytest` — run the tests
+12. `uv run python -m app.dossier` — writes one **event dossier** per top story to `data/dossiers/`: the winning outcome's price path with every flagged first buy marked against the estimated public moment, when the flagged money came in, and the flagged accounts with funding links and case files. The dashboard's event table links to them (the pipeline builds them)
+13. `uv run pytest` — run the tests
 
 ## Running on a server
 
@@ -310,7 +311,7 @@ as in the digests). Unset, nothing is sent.
 | `scoring/` | Feature tables (from canonical tables only) and the weighted score |
 | `eval/`   | Backtest (planted trades), the known-cases study (publicly reported episodes), watch replay |
 | `watch/`  | Live watch: alerts on open markets before the winner is known |
-| `app/`    | Static HTML dashboard and the analyst review loop (`app/review.py`) |
+| `app/`    | Static HTML dashboard, event dossiers (`app/dossier.py`) and the analyst review loop (`app/review.py`) |
 | `pipeline.py` | One-command incremental run, run log and digest |
 | `examples/operator/` | Synthetic sportsbook export for the operator path |
 | `docs/` | Demo walkthrough, investor brief, market research notes |
