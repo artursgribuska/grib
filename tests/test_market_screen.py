@@ -64,3 +64,23 @@ def test_sibling_public_moment_and_deadline_decay():
     assert f.loc["B", "certainty_at"] == st["A"]               # the story's public moment comes from A
     assert bool(f.loc["C", "deadline_decay"]) and f.loc["C", "rise"] == 0
     assert not bool(f.loc["A", "deadline_decay"]) and f.loc["A", "rise"] > 0
+
+
+def test_screen_pages_render(tmp_path):
+    import re
+    from scoring.features import build_features
+    from app.screen_pages import build_all
+    con = _mini()
+    con.execute("UPDATE markets SET question = 'Out <b>by</b>?' WHERE market_id = 'A'")
+    build_features(con)
+    import scoring.market_screen as ms
+    old, ms.MIN_PRE_VOLUME = ms.MIN_PRE_VOLUME, 0
+    try:
+        made = build_all(con, top=5, out_dir=tmp_path)
+    finally:
+        ms.MIN_PRE_VOLUME = old
+    assert len(made) == 3 and (tmp_path / "index.html").exists()
+    pages = [f.read_text() for _, f in made]
+    assert all("<svg" in p and "What drove the score" in p for p in pages)
+    assert not any("<b>by</b>" in p for p in pages)
+    assert any("not credited" in p for p in pages)          # market C: deadline decay explained

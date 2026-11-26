@@ -22,6 +22,7 @@ known-cases|eval.known_cases|Validation on publicly reported cases
 replay|watch.live|Replay the live watch on history (--replay)
 categories|eval.category_index|Category index: categories compared on behaviour alone
 screen|scoring.market_screen|Market screen: rank markets without account ids
+screen-pages|app.screen_pages|One page per top screened market (data/screen/)
 screen-cases|eval.screen_cases|Market screen on the known cases'
 
 if [ $# -eq 0 ] || [ "$1" = help ] || [ "$1" = -h ] || [ "$1" = --help ]; then

@@ -297,7 +297,9 @@ The dashboard shows the screen's top 10 under the event roll-ups.
 `uv run python -m ingest.kalshi --markets 200` loads recently settled Kalshi markets (Kalshi's public
 feed appears to keep about two months of trades), and
 `GRIB_DB_PATH=data/kalshi.duckdb uv run python -m scoring.market_screen --rebuild` screens them
-(`data/kalshi/market_screen.md`). A screened market is worth a closer look, not a finding.
+(`data/kalshi/market_screen.md`); `GRIB_DB_PATH=data/kalshi.duckdb uv run python -m app.screen_pages` writes
+one page per top market (`data/kalshi/screen/`): the winner's price path around the public moment
+and what drove the score. A screened market is worth a closer look, not a finding.
 
 ## Category index
 
