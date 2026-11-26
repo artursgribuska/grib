@@ -137,11 +137,12 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
     try:                                   # outcomes of earlier alerts; a lookup failure must not lose the scan
         n_resolved = follow_up.check(con, http, now)
         (OUT / "scorecard.md").write_text(follow_up.report(con))
+        track = follow_up.excess_wins(follow_up.scorecard(con))
     except Exception:
         log.exception("follow-up of earlier alerts failed; will retry next scan")
-        n_resolved = 0
+        n_resolved, track = 0, None
     con.close()
-    text = write_digest(new, len(pairs), n_trades, now)
+    text = write_digest(new, len(pairs), n_trades, now, track)
     if new:
         from app.notify import notify
         notify(text)
@@ -149,7 +150,7 @@ def run(n_markets: int = 150, now: datetime | None = None) -> dict:
             "newly_resolved": n_resolved}
 
 
-def write_digest(new, n_markets: int, n_trades: int, now: datetime) -> None:
+def write_digest(new, n_markets: int, n_trades: int, now: datetime, track: dict | None = None) -> str:
     from scoring.score import short_account
     lines = [f"# Live watch — {now:%Y-%m-%d %H:%M} UTC", "",
              f"{n_markets} open markets, {n_trades:,} trades from the last {WINDOW_DAYS} days. "
@@ -157,7 +158,11 @@ def write_digest(new, n_markets: int, n_trades: int, now: datetime) -> None:
     for a in sorted(new, key=lambda x: -x.usd):
         lines.append(f"- **{a.kind.replace('_', ' ')}** · {a.question} · '{a.outcome}' · {short_account(a.account_id)} · "
                      f"${a.usd:,.0f} at {a.avg_price:.2f} · {a.detail} · last activity {a.at:%Y-%m-%d %H:%M} UTC")
+    if track and track["resolved"]:
+        lines += ["", f"Track record: of {track['resolved']} earlier alerts whose markets resolved, the flagged side won "
+                      f"{track['wins']}; the prices paid implied {track['expected_wins']:.1f} (data/live/scorecard.md)."]
     text = "\n".join(lines) + "\n"
+    OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "watch.md").write_text(text)
     return text
 

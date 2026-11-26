@@ -67,3 +67,11 @@ def test_scorecard_reads_without_outcomes_table_and_read_only(tmp_path):
     ro = duckdb.connect(str(db), read_only=True)
     s = scorecard(ro)
     assert len(s) == 1 and s.won.isna().all()
+
+
+def test_digest_includes_track_record(tmp_path, monkeypatch):
+    import watch.run_live as rl
+    monkeypatch.setattr(rl, "OUT", tmp_path)
+    text = rl.write_digest([], 10, 100, NOW, {"resolved": 4, "wins": 2, "expected_wins": 0.8, "alerts": 6, "z": 1.5})
+    assert "Track record" in text and "won 2" in text and "implied 0.8" in text
+    assert "Track record" not in rl.write_digest([], 10, 100, NOW, None)
