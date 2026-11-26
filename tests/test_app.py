@@ -33,3 +33,14 @@ def test_queue_caps_alerts_per_event_and_counts_the_rest(tmp_path, monkeypatch):
     assert n_slow > b.PER_EVENT and len(shown) == b.PER_EVENT
     page = b.build(con, top=50, out=tmp_path / "i.html").read_text()
     assert "more alert" in page and "per event" in page
+
+
+def test_dashboard_shows_market_screen(tmp_path, monkeypatch):
+    import scoring.market_screen as ms
+    from app.build import build
+    from scoring.run import run
+    con = build_db()
+    run(con)
+    monkeypatch.setattr(ms, "MIN_PRE_VOLUME", 0)
+    page = build(con, top=20, out=tmp_path / "i.html").read_text()
+    assert "Market screen (no account data)" in page
