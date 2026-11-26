@@ -321,23 +321,23 @@ feed appears to keep about two months of trades), and
 one page per top market (`data/kalshi/screen/`): the winner's price path around the public moment
 and what drove the score. A screened market is worth a closer look, not a finding.
 
-**Do live alerts carry information?** `uv run python -m eval.watch_volume` (with `--exclude-db` for
-out-of-sample runs) replays the live watch on every ordinary market of a database and asks whether
-alerted sides win more often than the prices paid implied. On 402 markets never used in any design
-decision, they did: 11 of 19 against 7.6 (exact one-sided p = 0.06). Counting one alert per market,
-since alerts on one market are not independent: 11 of 18 against 7.0 (p = 0.024). Across all 535
-in-scope markets: 16 of 33 against 10.7 (p = 0.023), or 15 of 28 against 9.0 per market (p = 0.006).
-P-values are exact (Poisson-binomial). Caveats: small counts, one sample period, and a win is never
-evidence about any individual account. The account-free watch
-below shows no such edge, which is the case for using account data where a venue has it.
+**Do live alerts beat the market's odds? Not established.** `uv run python -m eval.watch_volume`
+(with `--exclude-db` for out-of-sample runs) replays the live watch on every ordinary market of a
+database and asks whether alerted sides win more often than the prices paid implied. Counting one
+alert per market (alerts on one market are not independent), with exact Poisson-binomial p-values:
 
-**What kind of information?** Not necessarily non-public. By alert type, across the 535 in-scope
-markets: run-up initiators, which need no fresh account and are often established, active traders,
-won 12 of 20 times against 8.9 implied; long-shot entries by fresh or low-history accounts, the
-pattern of the reported cases, won 4 of 13 against 1.9, about twice their odds. Beating the odds is
-consistent with skill as much as with non-public information, and trading data alone cannot tell them
-apart. The watch finds sharp money fast; deciding whether it was informed is the reviewer's job,
-which is why the case file and the human decision exist.
+| Sample | Markets alerted | Won | Implied | p (one-sided) |
+|---|---:|---:|---:|---:|
+| First out-of-sample set (402 markets, resolved Sep–Nov 2026) | 18 | 11 | 7.0 | 0.024 |
+| **Pre-registered replication** (573 older markets, Jun–Sep 2026; `docs/preregistration.md`) | 54 | 20 | 19.2 | **0.46** |
+| Both, pooled (exploratory) | 72 | 31 | 26.2 | 0.12 |
+
+The first result did not replicate. Long-shot entries, the pattern of the reported cases, won 2 of 24
+times against 3.0 implied across both sets. So the evidence for the live watch is what it does on the
+reported cases (flagged hours to days ahead) and its manageable alert volume (3–8 per 1,000
+market-days), not a general edge over the price. That fits the product's purpose: alerts are leads,
+and a win, or a loss, says nothing about any individual account. The account-free watch below shows
+no edge either.
 
 ## Account-free live watch (Kalshi)
 
@@ -392,8 +392,8 @@ Replayed over history with only the data available at each moment (`uv run pytho
 | US–Iran ceasefire, April 2026 (**out of sample**) — "by April 7" / "by April 15" | **248 h** / **158 h**: accounts 0 and 1 days old buying at 11–15¢ | 6 / 2 and 4 / 0 |
 | US strikes on Iran, February 2026 (**out of sample**) — "by February 28" | **336 h** (the start of the 14-day replay window): an account 0 days old at 12¢ | 21 / 0; none of the losing "next strike on [date]" markets fired |
 | 200 ordinary markets, last 14 days each | 6.1 alerts per 1,000 market-days | alerted long shots won 20% vs 16% implied; run-up initiators 43% vs 30%; together 5 of 17 vs 3.6 implied (z +0.8: not significant) |
-| **402 further markets, never used in any design decision** (out of sample) | 3.4 per 1,000 market-days (watch scope) | **the flagged side won 11 of 19 vs 7.6 implied by the prices paid (exact one-sided p = 0.06); first alert per market: 11 of 18 vs 7.0 (p = 0.024)** |
-| All 535 in-scope markets of the 600-market sample | 4.4 per 1,000 market-days | 16 of 33 vs 10.7 implied (p = 0.023); first alert per market: 15 of 28 vs 9.0 (p = 0.006) |
+| 402 further markets, never used in any design decision (out of sample) | 3.4 per 1,000 market-days (watch scope) | first alert per market: 11 of 18 won vs 7.0 implied (exact p = 0.024) |
+| **573 older markets, pre-registered replication** | 8.1 per 1,000 market-days | **20 of 54 vs 19.2 implied (p = 0.46): did not replicate**; long-shot entries 0 of 18 vs 2.1 |
 
 The ordinary-market samples are small (11 and 7 alerts): the run-up edge is early evidence of
 signal, the long-shot edge is within noise. An account counts as fresh or low-history from the
@@ -434,7 +434,9 @@ of today and can include the very win being judged, so evaluations now remove th
 the same 33 alerts, the revised guidance escalates 5 (3 won vs 1.7 implied), monitors 27 (12 vs 8.9)
 and closes 1. Its triage value is therefore **not yet demonstrated**; what it does provide is a
 checked, readable first look on every alert within seconds. The suggestion can also differ between
-drafts on borderline cases. A fresh sample is being built to test it. `uv run python -m watch.triage` drafts
+drafts on borderline cases. On the pre-registered fresh sample (`docs/preregistration.md`) it again
+did not separate outcomes (escalate 2: 1 won vs 1.1 implied; monitor 59; close 4), while all 65 notes
+passed the checks: reliable drafting, unproven triage. `uv run python -m watch.triage` drafts
 `uv run python -m watch.triage` drafts
 notes on demand.
 

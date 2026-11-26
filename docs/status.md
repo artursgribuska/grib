@@ -21,7 +21,7 @@ figure below can be reproduced with the command shown next to it.
 | Account-free live watch (Kalshi) | One-sided long-shot surges from anonymous trades; first run: 100 markets, 59,035 trades, 1 alert | `./grib kalshi-watch` |
 | Both watches on one schedule | Container default; one venue failing does not stop the other | `./grib watch-all --every 3` |
 | Before the news (time machine) | Interactive replay of the reported cases with the blind AI first look, plus an ordinary-market control | `./grib timemachine` |
-| Live-watch evidence | Out of sample: flagged side won 11 of 18 markets vs 7.0 implied (exact p = 0.024); second sample pre-registered | `eval.watch_volume` |
+| Live-watch evidence | General edge over the odds not established: 11 of 18 vs 7.0 (p = 0.024) did not replicate in a pre-registered test (20 of 54 vs 19.2, p = 0.46) | `eval.watch_volume`, `docs/preregistration.md` |
 | Quick demo | Maduro and Nobel in a small universe, ~15 min | `uv run python -m demo` |
 | Notifications | New alerts posted to a Slack-compatible webhook (`GRIB_ALERT_WEBHOOK_URL`), escalations first | `watch.run_all --every 3` |
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
@@ -101,10 +101,9 @@ window. Details are in the README and the commit history.
   so such items are timed at the end of the following day and never count as preceding a buy.
   Failed searches are marked as failed and retried, never reported as "no news".
 - **The live watch** needs scheduling (every few hours) to protect payouts in practice. Its
-  prospective scorecard has 6 alerts and none resolved yet. Replayed out of sample (402 markets) the
-  flagged side won 11 of 19 vs 7.6 implied (exact p = 0.06; per market 11 of 18 vs 7.0, p = 0.024):
-  modest, with small counts. Much of that edge comes from established accounts that start sharp
-  moves, which fits skill as well as non-public information (eval/triage_eval.py).
+  prospective scorecard has 6 alerts and none resolved yet. Whether alerts beat the market's odds
+  is not established: an out-of-sample result (11 of 18, p = 0.024) did not replicate in a
+  pre-registered test on 573 older markets (20 of 54 vs 19.2, p = 0.46).
 - **Free news sources are best effort.** On 26 November GDELT refused most requests with HTTP 429
   for minutes at a time (the Google News fallback now covers that). A production version should
   add a paid, minute-precise wire source.
