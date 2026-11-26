@@ -22,6 +22,12 @@ figure below can be reproduced with the command shown next to it.
 | Unit cost | ~7.6¢ per AI case file (33 written) | printed by `cases.run` |
 | Tests | 130 passing | `./grib test` |
 
+**Clean-machine run (26 November).** A fresh clone, `uv sync`, then the full pipeline on 200 new
+markets: load 8 min, account enrichment 14 min, scoring 7 s, on-chain funding 11 min, news 5 min
+(GDELT refused, Google News answered all 14 markets), 10 AI case files 7 min (≈$0.83, ≈8¢ each),
+dossiers, screen pages and dashboard under 1 s. 9 of 10 case files passed every automated check;
+the tenth was held for attention because the draft used a banned word ("insider").
+
 ## What it shows
 
 **CFTC complaint match.** The engine's #1 alert is 436,760 "Yes" shares of "Maduro out by
