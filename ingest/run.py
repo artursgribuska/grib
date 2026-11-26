@@ -50,19 +50,27 @@ RAW_TRADE_FIELDS = ["proxy_wallet", "side", "outcome", "outcome_index", "price",
 
 
 # --------------------------------------------------------------------------- selection
-def discover_candidates(gamma: GammaClient, refresh: bool) -> list[tuple[dict, dict]]:
-    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=config.SELECTION["lookback_days"])
+def discover_candidates(gamma: GammaClient, refresh: bool, newest_days: float = 0,
+                        oldest_days: float | None = None, exclude: set[str] | None = None,
+                        max_pages: int = 20) -> list[tuple[dict, dict]]:
+    """Resolved markets closed between `oldest_days` and `newest_days` ago (default: the configured
+    lookback up to now), leaving out market ids in `exclude` (earlier samples)."""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    cutoff = now - timedelta(days=oldest_days if oldest_days is not None else config.SELECTION["lookback_days"])
+    newest = now - timedelta(days=newest_days)
+    exclude = exclude or set()
     seen: dict[str, tuple[dict, dict]] = {}
     for tag in config.CRAWL_TAGS:
         n_events = 0
-        for ev in gamma.iter_closed_events(tag, refresh=refresh):
+        for ev in gamma.iter_closed_events(tag, refresh=refresh, max_pages=max_pages):
             ev_closed = pm._parse_ts(ev.get("closedTime"))
             if ev_closed and ev_closed < cutoff:
                 break  # sorted newest-closed first, so everything after is older
             n_events += 1
             for m in ev.get("markets") or []:
                 cid = m.get("conditionId")
-                if cid and cid not in seen and _eligible(m, cutoff):
+                closed = pm._parse_ts(m.get("closedTime"))
+                if cid and cid not in seen and cid not in exclude and closed and closed <= newest and _eligible(m, cutoff):
                     seen[cid] = (m, ev)
         log.info("tag %-12s scanned %4d events, %5d eligible markets so far", tag, n_events, len(seen))
     return list(seen.values())
@@ -180,6 +188,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--markets", type=int, default=config.SELECTION["target_markets"])
     ap.add_argument("--refresh-listing", action="store_true", help="re-query Gamma for newly resolved markets")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--resolved-between", type=float, nargs=2, metavar=("NEWEST_DAYS", "OLDEST_DAYS"), default=None,
+                    help="only markets resolved between these many days ago (e.g. 60 150), for a separate sample")
+    ap.add_argument("--exclude-db", action="append", default=[], help="skip markets already in this database")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -189,7 +200,14 @@ def main(argv: list[str] | None = None) -> None:
     gamma, data_api = GammaClient(http), DataApiClient(http)
 
     log.info("1/4 discovering recently resolved markets on Gamma ...")
-    cands = discover_candidates(gamma, refresh=args.refresh_listing)
+    exclude: set[str] = set()
+    for path in args.exclude_db:
+        c = duckdb.connect(path, read_only=True)
+        exclude |= {r[0] for r in c.execute("SELECT market_id FROM markets").fetchall()}
+        c.close()
+    newest, oldest = args.resolved_between or (0, None)
+    cands = discover_candidates(gamma, refresh=args.refresh_listing, newest_days=newest, oldest_days=oldest,
+                                exclude=exclude, max_pages=60 if args.resolved_between else 20)
     sample = choose_sample(cands, args.markets)
     log.info("    %d eligible markets, %d selected", len(cands), len(sample))
 
